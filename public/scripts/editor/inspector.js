@@ -310,15 +310,18 @@ export function renderInspector(hostEl, project, scene, actions) {
   hostEl.appendChild(validationBox);
 }
 
-function renderValidation(result, host) {
+export function renderValidation(result, host, options = {}) {
+  const { showEmptyState = true } = options;
   host.innerHTML = '';
   if (!result) return;
   const { errors = [], warnings = [] } = result;
   if (!errors.length && !warnings.length) {
-    const ok = document.createElement('p');
-    ok.className = 'validation-ok';
-    ok.textContent = 'No validation issues found.';
-    host.appendChild(ok);
+    if (showEmptyState) {
+      const ok = document.createElement('p');
+      ok.className = 'validation-ok';
+      ok.textContent = 'No validation issues found.';
+      host.appendChild(ok);
+    }
     return;
   }
 

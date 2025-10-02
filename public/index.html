@@ -21,7 +21,10 @@
   </header>
 
   <div id="app-messages" class="app-messages" aria-live="polite" role="status" hidden>
-    <span class="app-messages__text"></span>
+    <div class="app-messages__content">
+      <span class="app-messages__text"></span>
+      <div class="app-messages__details validation-results" hidden></div>
+    </div>
     <button type="button" class="app-messages__dismiss" aria-label="Dismiss message">&times;</button>
   </div>
 
