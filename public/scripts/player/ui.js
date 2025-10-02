@@ -26,6 +26,134 @@ export function renderPlayerUI({ stageEl, uiEl, project, scene, onChoice }) {
   const dialogueBox = document.createElement('div');
   dialogueBox.className = 'player-dialogue';
 
+  const audioEntries = scene.dialogue
+    .map((line, index) => ({ line, index }))
+    .filter(entry => entry.line.audio?.objectUrl);
+
+  let activeSequence = null;
+
+  if (audioEntries.length) {
+    const playAllButton = document.createElement('button');
+    playAllButton.type = 'button';
+    playAllButton.className = 'audio-play-all';
+    playAllButton.textContent = '▶️ Play all';
+    playAllButton.setAttribute('aria-label', 'Play all dialogue audio');
+
+    const resetButtonState = () => {
+      playAllButton.textContent = '▶️ Play all';
+      playAllButton.disabled = false;
+    };
+
+    const startSequence = () => {
+      let cancelled = false;
+      let currentIndex = 0;
+      let activeCleanup = null;
+      let sequenceActive = true;
+
+      const handleFailure = err => {
+        console.warn('Audio playback failed', err);
+        finishSequence();
+      };
+
+      const finishSequence = () => {
+        if (activeCleanup) {
+          activeCleanup();
+          activeCleanup = null;
+        }
+        sequenceActive = false;
+        resetButtonState();
+        activeSequence = null;
+      };
+
+      const playNext = () => {
+        if (cancelled) {
+          finishSequence();
+          return;
+        }
+
+        const entry = audioEntries[currentIndex];
+        if (!entry) {
+          finishSequence();
+          return;
+        }
+
+        if (activeCleanup) {
+          activeCleanup();
+          activeCleanup = null;
+        }
+
+        const audio = new Audio(entry.line.audio.objectUrl);
+
+        const cleanup = () => {
+          audio.removeEventListener('ended', onEnded);
+          audio.removeEventListener('error', onError);
+          if (typeof audio.pause === 'function') {
+            audio.pause();
+          }
+          audio.currentTime = 0;
+          activeCleanup = null;
+        };
+
+        const onEnded = () => {
+          cleanup();
+          currentIndex += 1;
+          playNext();
+        };
+
+        const onError = event => {
+          cleanup();
+          handleFailure(event?.error ?? event);
+        };
+
+        activeCleanup = cleanup;
+
+        audio.addEventListener('ended', onEnded);
+        audio.addEventListener('error', onError);
+
+        try {
+          const playAttempt = audio.play();
+          if (playAttempt?.catch) {
+            playAttempt.catch(err => {
+              cleanup();
+              handleFailure(err);
+            });
+          }
+        } catch (err) {
+          cleanup();
+          handleFailure(err);
+        }
+      };
+
+      const sequence = {
+        stop() {
+          if (cancelled) {
+            return;
+          }
+          cancelled = true;
+          finishSequence();
+        },
+      };
+
+      playAllButton.textContent = '⏹ Stop playback';
+      playAllButton.disabled = false;
+
+      playNext();
+
+      return sequenceActive ? sequence : null;
+    };
+
+    playAllButton.addEventListener('click', () => {
+      if (activeSequence) {
+        activeSequence.stop();
+        return;
+      }
+
+      activeSequence = startSequence();
+    });
+
+    dialogueBox.appendChild(playAllButton);
+  }
+
   scene.dialogue.forEach((line, index) => {
     const lineContainer = document.createElement('div');
     lineContainer.className = 'player-dialogue-line';
