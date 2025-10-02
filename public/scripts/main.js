@@ -6,7 +6,9 @@ import { validateProject } from './editor/validators.js';
 
 const elLeft = document.getElementById('left-pane');
 const elRight = document.getElementById('right-pane');
-const status = document.getElementById('status');
+const messageHost = document.getElementById('app-messages');
+const messageText = messageHost?.querySelector('.app-messages__text');
+const dismissButton = messageHost?.querySelector('.app-messages__dismiss');
 
 const btnEdit = document.getElementById('mode-edit');
 const btnPlay = document.getElementById('mode-play');
@@ -28,21 +30,39 @@ function setMode(next) {
   btnEdit.classList.toggle('active', mode === 'edit');
   btnPlay.classList.toggle('active', mode === 'play');
   if (mode === 'edit') {
-    teardown = renderEditor(store, elLeft, elRight, setStatus);
+    teardown = renderEditor(store, elLeft, elRight, showMessage);
   } else {
-    teardown = renderPlayer(store, elLeft, elRight, setStatus);
+    teardown = renderPlayer(store, elLeft, elRight, showMessage);
   }
 }
 
-function setStatus(msg) {
-  status.textContent = msg;
+function showMessage(msg) {
+  if (!messageHost || !messageText) return;
+  if (!msg) {
+    clearMessage();
+    return;
+  }
+  messageText.textContent = msg;
+  messageHost.hidden = false;
+}
+
+function clearMessage() {
+  if (!messageHost || !messageText) return;
+  messageText.textContent = '';
+  messageHost.hidden = true;
+}
+
+if (dismissButton) {
+  dismissButton.addEventListener('click', () => {
+    clearMessage();
+  });
 }
 
 btnEdit.addEventListener('click', () => setMode('edit'));
 btnPlay.addEventListener('click', () => {
   const result = validateProject(store.get().project);
   if (result.errors.length) {
-    setStatus('Resolve validation errors before entering Play mode.');
+    showMessage('Resolve validation errors before entering Play mode.');
     if (mode !== 'edit') {
       setMode('edit');
     }
@@ -61,7 +81,7 @@ btnPlay.addEventListener('click', () => {
     return;
   }
   setMode('play');
-  setStatus('');
+  clearMessage();
 });
 
 btnImport.addEventListener('click', () => fileInput.click());
@@ -70,11 +90,11 @@ fileInput.addEventListener('change', async (e) => {
   if (!file) return;
   try {
     await importProject(store, file);
-    setStatus('Imported project.');
+    showMessage('Imported project.');
     setMode('edit');
   } catch (err) {
     console.error(err);
-    setStatus('Import failed.');
+    showMessage('Import failed.');
   } finally {
     fileInput.value = '';
   }
@@ -83,10 +103,10 @@ fileInput.addEventListener('change', async (e) => {
 btnExport.addEventListener('click', async () => {
   try {
     await exportProject(store);
-    setStatus('Exported project JSON.');
+    showMessage('Exported project JSON.');
   } catch (err) {
     console.error(err);
-    setStatus('Export failed.');
+    showMessage('Export failed.');
   }
 });
 

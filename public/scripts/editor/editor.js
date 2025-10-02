@@ -3,7 +3,7 @@ import { renderInspector } from './inspector.js';
 import { validateProject } from './validators.js';
 import { createScene, SceneType } from '../model.js';
 
-export function renderEditor(store, leftEl, rightEl, setStatus) {
+export function renderEditor(store, leftEl, rightEl, showMessage) {
   leftEl.innerHTML = '';
   rightEl.innerHTML = '';
 
@@ -116,7 +116,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
   function addScene() {
     const { project } = store.get();
     if (project.scenes.length >= 20) {
-      setStatus('Scene limit reached (20).');
+      showMessage('Scene limit reached (20).');
       return;
     }
     const newScene = createScene();
@@ -125,7 +125,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       scenes: [...prev.scenes, newScene],
     }));
     selectedId = newScene.id;
-    setStatus(`Added scene ${newScene.id}.`);
+    showMessage(`Added scene ${newScene.id}.`);
   }
 
   function deleteScene(sceneId) {
@@ -134,7 +134,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
     if (!scene) return;
     const startScenes = project.scenes.filter(s => s.type === SceneType.START);
     if (scene.type === SceneType.START && startScenes.length <= 1) {
-      setStatus('Cannot delete the only Start scene.');
+      showMessage('Cannot delete the only Start scene.');
       return;
     }
     if (scene.image?.objectUrl) {
@@ -160,7 +160,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
     });
     const nextProject = store.get().project;
     selectedId = nextProject.scenes[0]?.id ?? null;
-    setStatus(`Deleted scene ${sceneId}.`);
+    showMessage(`Deleted scene ${sceneId}.`);
   }
 
   function setSceneType(sceneId, type) {
@@ -181,7 +181,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    setStatus(`Scene ${sceneId} set to ${type}.`);
+    showMessage(`Scene ${sceneId} set to ${type}.`);
   }
 
   function setSceneImage(sceneId, file) {
@@ -204,7 +204,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    setStatus(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
+    showMessage(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
   }
 
   function addDialogue(sceneId) {

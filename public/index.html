@@ -20,6 +20,11 @@
     </nav>
   </header>
 
+  <div id="app-messages" class="app-messages" aria-live="polite" role="status" hidden>
+    <span class="app-messages__text"></span>
+    <button type="button" class="app-messages__dismiss" aria-label="Dismiss message">&times;</button>
+  </div>
+
   <main id="app" class="layout">
     <section id="left-pane" class="pane">
       <!-- Editor graph or Player stage will render here -->
@@ -28,10 +33,6 @@
       <!-- Inspector or Dialogue panel will render here -->
     </section>
   </main>
-
-  <footer class="statusbar">
-    <span id="status">Ready.</span>
-  </footer>
 
   <script type="module" src="./scripts/main.js"></script>
 </body>

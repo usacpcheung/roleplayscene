@@ -2,7 +2,7 @@ import { ensureAudioGate } from './audio.js';
 import { renderPlayerUI } from './ui.js';
 import { SceneType } from '../model.js';
 
-export function renderPlayer(store, leftEl, rightEl, setStatus) {
+export function renderPlayer(store, leftEl, rightEl, showMessage) {
   leftEl.innerHTML = '';
   rightEl.innerHTML = '';
 
@@ -53,7 +53,7 @@ export function renderPlayer(store, leftEl, rightEl, setStatus) {
       ensureAudioGate(store);
       const startScene = findStartScene(store.get().project);
       if (!startScene) {
-        setStatus('No Start scene found.');
+        showMessage('No Start scene found.');
         return;
       }
       currentSceneId = startScene.id;
@@ -66,7 +66,7 @@ export function renderPlayer(store, leftEl, rightEl, setStatus) {
     const { project } = store.get();
     const scene = project.scenes.find(s => s.id === currentSceneId);
     if (!scene) {
-      setStatus('Scene missing.');
+      showMessage('Scene missing.');
       renderIntro();
       return;
     }

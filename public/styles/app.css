@@ -1,13 +1,16 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+body { display: flex; flex-direction: column; min-height: 100vh; }
 .topbar { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
 .topbar h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
 .toolbar button { margin-right: 0.5rem; }
 .toolbar button.active { font-weight: 700; }
-.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 72px); }
+.app-messages { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 1rem; border-bottom: 1px solid #e5e7eb; background: #f1f5f9; color: #0f172a; }
+.app-messages__text { flex: 1; }
+.app-messages__dismiss { border: none; background: transparent; font-size: 1.25rem; line-height: 1; cursor: pointer; color: inherit; padding: 0.25rem; }
+.layout { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 0; }
 .pane { border-right: 1px solid #eee; padding: 0.75rem; overflow: auto; }
 .pane:last-child { border-right: none; }
-.statusbar { height: 40px; display: flex; align-items: center; padding: 0 1rem; border-top: 1px solid #e5e7eb; background: #fafafa; }
 .placeholder { border: 2px dashed #d1d5db; border-radius: 10px; padding: 1.25rem; text-align: center; color: #6b7280; }
 .stage { display: flex; align-items: center; justify-content: center; min-height: 300px; background: #111; color: #eee; border-radius: 12px; overflow: hidden; }
 .stage img { width: 100%; height: 100%; object-fit: cover; }
