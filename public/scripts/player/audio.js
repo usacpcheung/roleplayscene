@@ -2,11 +2,26 @@ export function ensureAudioGate(store) {
   if (!store.get().audioGate) store.set({ audioGate: true });
 }
 
-export function createBackgroundAudioController() {
+export function createBackgroundAudioController({ defaultVolume = 0.4 } = {}) {
   let activeAudio = null;
   let activeSrc = null;
+  let desiredSrc = null;
+  let volume = Number.isFinite(defaultVolume) ? Math.max(0, Math.min(1, defaultVolume)) : 0.4;
+  let muted = false;
 
-  function stop() {
+  function applyAudioSettings(audio) {
+    if (!audio) return;
+    try {
+      audio.volume = muted ? 0 : volume;
+    } catch (err) {
+      console.warn('Failed to apply background audio volume', err);
+    }
+  }
+
+  function stop({ preserveDesired = false } = {}) {
+    if (!preserveDesired) {
+      desiredSrc = null;
+    }
     if (!activeAudio) {
       activeSrc = null;
       return;
@@ -28,8 +43,13 @@ export function createBackgroundAudioController() {
   }
 
   function play(src) {
+    desiredSrc = src ?? null;
     if (!src) {
       stop();
+      return;
+    }
+    if (muted) {
+      stop({ preserveDesired: true });
       return;
     }
     if (activeSrc === src && activeAudio) {
@@ -46,10 +66,11 @@ export function createBackgroundAudioController() {
       return;
     }
 
-    stop();
+    stop({ preserveDesired: true });
 
     const audio = new Audio(src);
     audio.loop = true;
+    applyAudioSettings(audio);
 
     activeAudio = audio;
     activeSrc = src;
@@ -72,9 +93,36 @@ export function createBackgroundAudioController() {
     }
   }
 
+  function setVolume(nextVolume) {
+    if (!Number.isFinite(nextVolume)) {
+      return;
+    }
+    volume = Math.max(0, Math.min(1, nextVolume));
+    if (!muted) {
+      applyAudioSettings(activeAudio);
+    }
+  }
+
+  function setMuted(nextMuted) {
+    const desiredMuted = Boolean(nextMuted);
+    if (desiredMuted === muted) {
+      return;
+    }
+    muted = desiredMuted;
+    if (muted) {
+      stop({ preserveDesired: true });
+      return;
+    }
+    if (desiredSrc) {
+      play(desiredSrc);
+    }
+  }
+
   return {
     play,
     stop,
     teardown: stop,
+    setVolume,
+    setMuted,
   };
 }

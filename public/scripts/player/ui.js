@@ -1,6 +1,6 @@
 import { SceneType } from '../model.js';
 
-export function renderPlayerUI({ stageEl, uiEl, project, scene, onChoice }) {
+export function renderPlayerUI({ stageEl, uiEl, project, scene, onChoice, backgroundAudioControls = null }) {
   stageEl.innerHTML = '';
   uiEl.innerHTML = '';
 
@@ -21,6 +21,68 @@ export function renderPlayerUI({ stageEl, uiEl, project, scene, onChoice }) {
     emptyStage.className = 'stage-empty';
     emptyStage.textContent = 'No stage image';
     stageEl.appendChild(emptyStage);
+  }
+
+  if (backgroundAudioControls) {
+    const bgControls = document.createElement('div');
+    bgControls.className = 'background-audio-controls';
+
+    const heading = document.createElement('h4');
+    heading.textContent = 'Background music';
+    bgControls.appendChild(heading);
+
+    const volumeWrapper = document.createElement('div');
+    volumeWrapper.className = 'background-volume';
+
+    const volumeLabel = document.createElement('label');
+    volumeLabel.textContent = 'Background music volume';
+
+    const volumeSlider = document.createElement('input');
+    volumeSlider.type = 'range';
+    volumeSlider.min = '0';
+    volumeSlider.max = '1';
+    volumeSlider.step = '0.05';
+    volumeSlider.value = String(backgroundAudioControls.volume ?? 0);
+    volumeSlider.setAttribute('aria-label', 'Background music volume');
+    volumeSlider.disabled = Boolean(backgroundAudioControls.muted);
+
+    const volumeValue = document.createElement('span');
+    volumeValue.className = 'background-volume-value';
+    const initialVolume = Number(backgroundAudioControls.volume ?? 0);
+    volumeValue.textContent = `${Math.round(initialVolume * 100)}%`;
+
+    volumeSlider.addEventListener('input', event => {
+      const value = Number(event.target.value);
+      backgroundAudioControls.volume = value;
+      volumeValue.textContent = `${Math.round(value * 100)}%`;
+      backgroundAudioControls.onVolumeChange?.(value);
+    });
+
+    volumeLabel.appendChild(volumeSlider);
+    volumeWrapper.append(volumeLabel, volumeValue);
+    bgControls.appendChild(volumeWrapper);
+
+    const muteButton = document.createElement('button');
+    muteButton.type = 'button';
+
+    const updateMuteLabel = (muted) => {
+      muteButton.textContent = muted ? 'Unmute background music' : 'Mute background music';
+      muteButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
+      muteButton.setAttribute('aria-label', muted ? 'Unmute background music' : 'Mute background music');
+      volumeSlider.disabled = muted;
+    };
+
+    updateMuteLabel(Boolean(backgroundAudioControls.muted));
+
+    muteButton.addEventListener('click', () => {
+      const nextMuted = backgroundAudioControls.onToggleMute?.();
+      const resolved = typeof nextMuted === 'boolean' ? nextMuted : !backgroundAudioControls.muted;
+      backgroundAudioControls.muted = resolved;
+      updateMuteLabel(resolved);
+    });
+
+    bgControls.appendChild(muteButton);
+    uiEl.appendChild(bgControls);
   }
 
   const dialogueBox = document.createElement('div');

@@ -9,6 +9,7 @@ class StubElement {
     this.className = '';
     this.dataset = {};
     this.disabled = false;
+    this.value = '';
   }
 
   appendChild(child) {
@@ -147,6 +148,22 @@ function findByText(root, text) {
   return null;
 }
 
+function findElement(root, predicate) {
+  if (!root) {
+    return null;
+  }
+  if (predicate(root)) {
+    return root;
+  }
+  for (const child of root.children || []) {
+    const match = findElement(child, predicate);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
 function cloneProject(project) {
   return {
     meta: { ...project.meta },
@@ -217,16 +234,72 @@ const backgroundInstance = FakeAudio.instances[0] ?? null;
 logResult('Background track plays after Begin Story', FakeAudio.playCalls[0] === 'bg-loop.ogg');
 logResult('Background track loops enabled', backgroundInstance?.loop === true);
 logResult('Background track playing', backgroundInstance?.paused === false);
+logResult('Background track default volume applied', Math.abs((backgroundInstance?.volume ?? 0) - 0.4) < 0.001);
+
+const volumeSliderInitial = findElement(uiHost, el => el.tagName === 'input' && el.type === 'range');
+logResult('Background volume slider renders', Boolean(volumeSliderInitial));
+logResult(
+  'Background slider default value',
+  Boolean(volumeSliderInitial) && Math.abs(Number(volumeSliderInitial.value) - 0.4) < 0.001,
+);
+
+if (volumeSliderInitial) {
+  volumeSliderInitial.value = '0.7';
+  volumeSliderInitial.dispatchEvent('input', { target: volumeSliderInitial });
+}
+
+logResult(
+  'Background volume updates active audio',
+  Math.abs((backgroundInstance?.volume ?? 0) - 0.7) < 0.001,
+);
 
 const initialPlayCount = FakeAudio.playCalls.length;
 
 const clonedProject = cloneProject(store.get().project);
 store.set({ project: clonedProject });
 
+const volumeSliderAfterRerender = findElement(uiHost, el => el.tagName === 'input' && el.type === 'range');
+logResult('Background slider persists across re-render', Boolean(volumeSliderAfterRerender));
+logResult(
+  'Background slider retains value after re-render',
+  Boolean(volumeSliderAfterRerender) && Math.abs(Number(volumeSliderAfterRerender.value) - 0.7) < 0.001,
+);
 logResult(
   'Background track persists across re-render',
   FakeAudio.playCalls.length === initialPlayCount && FakeAudio.instances[0] === backgroundInstance && backgroundInstance?.paused === false,
 );
+
+let muteButton = findByText(uiHost, 'Mute background music');
+logResult('Mute button renders', Boolean(muteButton));
+if (muteButton) {
+  muteButton.dispatchEvent('click');
+}
+
+logResult('Background track stops when muted', FakeAudio.pauseCalls.includes('bg-loop.ogg'));
+logResult('Background track paused state after mute', backgroundInstance?.paused === true);
+
+const sliderWhileMuted = findElement(uiHost, el => el.tagName === 'input' && el.type === 'range');
+logResult('Volume slider disabled while muted', Boolean(sliderWhileMuted?.disabled));
+
+const unmuteButton = findByText(uiHost, 'Unmute background music');
+logResult('Unmute button renders after toggle', Boolean(unmuteButton));
+if (unmuteButton) {
+  unmuteButton.dispatchEvent('click');
+}
+
+const resumedInstance = FakeAudio.instances[FakeAudio.instances.length - 1] ?? null;
+logResult('Background track restarts after unmute', FakeAudio.playCalls.length === initialPlayCount + 1);
+logResult('Background track resumes playback', resumedInstance?.paused === false);
+logResult(
+  'Background track retains volume after unmute',
+  Math.abs((resumedInstance?.volume ?? 0) - 0.7) < 0.001,
+);
+
+muteButton = findByText(uiHost, 'Mute background music');
+logResult('Mute button label resets after unmute', Boolean(muteButton));
+
+const sliderAfterUnmute = findElement(uiHost, el => el.tagName === 'input' && el.type === 'range');
+logResult('Volume slider enabled after unmute', Boolean(sliderAfterUnmute) && !sliderAfterUnmute.disabled);
 
 const choiceButton = findByText(uiHost, 'To End');
 logResult('Choice button renders', Boolean(choiceButton));
@@ -234,7 +307,7 @@ if (choiceButton) {
   choiceButton.dispatchEvent('click');
 }
 
-logResult('Background track stops when leaving scene', FakeAudio.pauseCalls.includes('bg-loop.ogg'));
-logResult('Background track paused state after stop', backgroundInstance?.paused === true);
+logResult('Background track stops when leaving scene', FakeAudio.pauseCalls.filter(src => src === 'bg-loop.ogg').length >= 2);
+logResult('Background track paused state after stop', resumedInstance?.paused === true);
 
 cleanup();

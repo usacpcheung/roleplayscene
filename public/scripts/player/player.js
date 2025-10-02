@@ -15,7 +15,10 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   rightEl.appendChild(uiPanel);
 
   let currentSceneId = null;
-  const backgroundTrack = createBackgroundAudioController();
+  let backgroundVolume = 0.4;
+  let backgroundMuted = false;
+  const backgroundTrack = createBackgroundAudioController({ defaultVolume: backgroundVolume });
+  backgroundTrack.setVolume(backgroundVolume);
 
   const unsubscribe = store.subscribe(() => {
     if (!currentSceneId) return;
@@ -88,6 +91,21 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
         currentSceneId = nextId;
         renderCurrentScene();
       },
+      backgroundAudioControls: store.get().audioGate
+        ? {
+            volume: backgroundVolume,
+            muted: backgroundMuted,
+            onVolumeChange: (value) => {
+              backgroundVolume = value;
+              backgroundTrack.setVolume(value);
+            },
+            onToggleMute: () => {
+              backgroundMuted = !backgroundMuted;
+              backgroundTrack.setMuted(backgroundMuted);
+              return backgroundMuted;
+            },
+          }
+        : null,
     });
   }
 
@@ -101,6 +119,8 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
       backgroundTrack.stop();
       return;
     }
+    backgroundTrack.setVolume(backgroundVolume);
+    backgroundTrack.setMuted(backgroundMuted);
     backgroundTrack.play(source);
   }
 
