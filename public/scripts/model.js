@@ -27,6 +27,7 @@ export function createScene(options = {}) {
     id = newId('scene'),
     type = SceneType.INTERMEDIATE,
     image = null,
+    backgroundAudio = null,
     dialogue = [],
     choices = [],
     autoNextSceneId = null,
@@ -41,6 +42,9 @@ export function createScene(options = {}) {
     id,
     type,
     image: image ? { name: image.name ?? '', objectUrl: image.objectUrl ?? null } : null,
+    backgroundAudio: backgroundAudio
+      ? { name: backgroundAudio.name ?? '', objectUrl: backgroundAudio.objectUrl ?? null }
+      : null,
     dialogue: normalisedDialogue,
     choices: choices.slice(0, 3).map(normaliseChoice),
     autoNextSceneId: type === SceneType.END ? null : (autoNextSceneId ?? null),

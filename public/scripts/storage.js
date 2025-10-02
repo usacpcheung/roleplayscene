@@ -10,6 +10,7 @@ export async function importProject(store, file) {
   const cleanedScenes = base.scenes.map(scene => {
     const imported = createScene(scene);
     imported.image = null;
+    imported.backgroundAudio = null;
     imported.dialogue = imported.dialogue.map(line => ({ text: line.text || '', audio: null }));
     imported.choices = imported.choices.map(choice => createChoice({
       id: choice.id,
@@ -38,6 +39,7 @@ export async function exportProject(store) {
       id: scene.id,
       type: scene.type,
       image: scene.image ? { name: scene.image.name || '' } : null,
+      backgroundAudio: scene.backgroundAudio ? { name: scene.backgroundAudio.name || '' } : null,
       dialogue: scene.dialogue.map(line => ({
         text: line.text,
         audio: line.audio ? { name: line.audio.name || '' } : null,

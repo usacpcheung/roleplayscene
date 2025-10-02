@@ -1,4 +1,4 @@
-import { ensureAudioGate } from './audio.js';
+import { ensureAudioGate, createBackgroundAudioController } from './audio.js';
 import { renderPlayerUI } from './ui.js';
 import { SceneType } from '../model.js';
 
@@ -15,6 +15,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   rightEl.appendChild(uiPanel);
 
   let currentSceneId = null;
+  const backgroundTrack = createBackgroundAudioController();
 
   const unsubscribe = store.subscribe(() => {
     if (!currentSceneId) return;
@@ -30,6 +31,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
 
   function cleanup() {
     unsubscribe();
+    backgroundTrack.teardown();
   }
 
   function findStartScene(project) {
@@ -38,6 +40,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
 
   function renderIntro() {
     const { project } = store.get();
+    backgroundTrack.stop();
     stage.innerHTML = '';
     const introStage = document.createElement('div');
     introStage.className = 'stage-empty';
@@ -56,6 +59,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
         showMessage('No Start scene found.');
         return;
       }
+      backgroundTrack.stop();
       currentSceneId = startScene.id;
       renderCurrentScene();
     });
@@ -66,20 +70,38 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     const { project } = store.get();
     const scene = project.scenes.find(s => s.id === currentSceneId);
     if (!scene) {
+      backgroundTrack.stop();
       showMessage('Scene missing.');
       renderIntro();
       return;
     }
+
+    syncBackgroundAudio(scene);
+
     renderPlayerUI({
       stageEl: stage,
       uiEl: uiPanel,
       project,
       scene,
       onChoice: (nextId) => {
+        backgroundTrack.stop();
         currentSceneId = nextId;
         renderCurrentScene();
       },
     });
+  }
+
+  function syncBackgroundAudio(scene) {
+    if (!scene || !store.get().audioGate) {
+      backgroundTrack.stop();
+      return;
+    }
+    const source = scene.backgroundAudio?.objectUrl ?? null;
+    if (!source) {
+      backgroundTrack.stop();
+      return;
+    }
+    backgroundTrack.play(source);
   }
 
   renderIntro();

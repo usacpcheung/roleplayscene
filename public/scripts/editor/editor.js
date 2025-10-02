@@ -41,6 +41,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
   function cloneScene(scene) {
     return {
       ...scene,
+      backgroundAudio: scene.backgroundAudio ? { ...scene.backgroundAudio } : null,
       dialogue: scene.dialogue.map(line => ({
         text: line.text,
         audio: line.audio ? { ...line.audio } : null,
@@ -84,6 +85,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       onDeleteScene: deleteScene,
       onSetSceneType: setSceneType,
       onSetSceneImage: setSceneImage,
+      onSetSceneBackgroundAudio: setSceneBackgroundAudio,
       onAddDialogue: addDialogue,
       onRemoveDialogue: removeDialogue,
       onUpdateDialogueText: updateDialogueText,
@@ -141,6 +143,9 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     }
     if (scene.image?.objectUrl) {
       URL.revokeObjectURL(scene.image.objectUrl);
+    }
+    if (scene.backgroundAudio?.objectUrl) {
+      URL.revokeObjectURL(scene.backgroundAudio.objectUrl);
     }
     scene.dialogue.forEach(line => {
       if (line.audio?.objectUrl) {
@@ -209,6 +214,31 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       return { ...prev, scenes };
     });
     showMessage(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
+  }
+
+  function setSceneBackgroundAudio(sceneId, file) {
+    mutateProject(prev => {
+      const scenes = prev.scenes.map(scene => {
+        if (scene.id !== sceneId) return scene;
+        const draft = cloneScene(scene);
+        if (draft.backgroundAudio?.objectUrl) {
+          URL.revokeObjectURL(draft.backgroundAudio.objectUrl);
+        }
+        if (!file) {
+          draft.backgroundAudio = null;
+        } else {
+          draft.backgroundAudio = {
+            name: file.name,
+            objectUrl: URL.createObjectURL(file),
+          };
+        }
+        return draft;
+      });
+      return { ...prev, scenes };
+    });
+    showMessage(file
+      ? `Updated background audio for ${sceneId}.`
+      : `Removed background audio for ${sceneId}.`);
   }
 
   function addDialogue(sceneId) {

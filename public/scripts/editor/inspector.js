@@ -91,6 +91,43 @@ export function renderInspector(hostEl, project, scene, actions) {
 
   hostEl.appendChild(imageField);
 
+  const backgroundField = document.createElement('div');
+  backgroundField.className = 'field';
+  const backgroundLabel = document.createElement('span');
+  backgroundLabel.textContent = 'Background music';
+  backgroundField.appendChild(backgroundLabel);
+
+  if (scene.backgroundAudio) {
+    const info = document.createElement('div');
+    info.className = 'audio-info';
+    info.textContent = `Attached: ${scene.backgroundAudio.name || 'Untitled track'}`;
+    backgroundField.appendChild(info);
+  } else {
+    const emptyInfo = document.createElement('p');
+    emptyInfo.className = 'hint';
+    emptyInfo.textContent = 'No background track selected.';
+    backgroundField.appendChild(emptyInfo);
+  }
+
+  const backgroundInput = document.createElement('input');
+  backgroundInput.type = 'file';
+  backgroundInput.accept = 'audio/*';
+  backgroundInput.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    actions.onSetSceneBackgroundAudio?.(scene.id, file || null);
+  });
+  backgroundField.appendChild(backgroundInput);
+
+  if (scene.backgroundAudio) {
+    const removeBgButton = document.createElement('button');
+    removeBgButton.type = 'button';
+    removeBgButton.textContent = 'Remove background music';
+    removeBgButton.addEventListener('click', () => actions.onSetSceneBackgroundAudio?.(scene.id, null));
+    backgroundField.appendChild(removeBgButton);
+  }
+
+  hostEl.appendChild(backgroundField);
+
   // Dialogue
   const dialogueSection = document.createElement('section');
   dialogueSection.className = 'dialogue-editor';
