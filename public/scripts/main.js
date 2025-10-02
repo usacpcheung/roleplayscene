@@ -1,7 +1,7 @@
 import { Store } from './state.js';
 import { renderEditor } from './editor/editor.js';
 import { renderPlayer } from './player/player.js';
-import { importProject, exportProject } from './storage.js';
+import { importProject, exportProject, setupPersistence } from './storage.js';
 import { validateProject } from './editor/validators.js';
 
 const elLeft = document.getElementById('left-pane');
@@ -20,6 +20,7 @@ const store = new Store();
 
 let mode = 'edit'; // 'edit' | 'play'
 let teardown = null;
+let persistenceCleanup = () => {};
 
 function setMode(next) {
   if (teardown) {
@@ -110,5 +111,23 @@ btnExport.addEventListener('click', async () => {
   }
 });
 
-// Initial render
-setMode('edit');
+async function bootstrap() {
+  try {
+    persistenceCleanup = await setupPersistence(store, { showMessage });
+  } catch (err) {
+    console.error('Failed to initialise persistence', err);
+    persistenceCleanup = () => {};
+  }
+  setMode('edit');
+}
+
+bootstrap();
+
+window.addEventListener('beforeunload', () => {
+  if (typeof teardown === 'function') {
+    teardown();
+  }
+  if (typeof persistenceCleanup === 'function') {
+    persistenceCleanup();
+  }
+});

@@ -207,6 +207,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.image = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
@@ -230,6 +231,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.backgroundAudio = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
@@ -298,6 +300,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.dialogue[index].audio = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
