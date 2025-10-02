@@ -63,7 +63,13 @@ function showMessage(msg) {
     messageDetails.hidden = true;
   }
 
-  messageHost.hidden = !text && !hasErrors && !hasWarnings;
+  if (text || hasErrors || hasWarnings) {
+    messageHost.hidden = false;
+    messageHost.removeAttribute('hidden');
+  } else {
+    messageHost.hidden = true;
+    messageHost.setAttribute('hidden', '');
+  }
 }
 
 function clearMessage() {
@@ -72,6 +78,7 @@ function clearMessage() {
   messageDetails.innerHTML = '';
   messageDetails.hidden = true;
   messageHost.hidden = true;
+  messageHost.setAttribute('hidden', '');
 }
 
 if (dismissButton) {

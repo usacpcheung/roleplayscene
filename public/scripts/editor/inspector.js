@@ -11,9 +11,6 @@ export function renderInspector(hostEl, project, scene, actions) {
     return;
   }
 
-  const validationBox = document.createElement('div');
-  validationBox.className = 'validation-results';
-
   const header = document.createElement('div');
   header.className = 'inspector-header';
   header.innerHTML = `<h3>${scene.id}</h3>`;
@@ -306,8 +303,6 @@ export function renderInspector(hostEl, project, scene, actions) {
   }
   hostEl.appendChild(choiceSection);
 
-  renderValidation(actions.validationResults, validationBox);
-  hostEl.appendChild(validationBox);
 }
 
 export function renderValidation(result, host, options = {}) {
