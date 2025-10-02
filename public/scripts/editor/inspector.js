@@ -47,6 +47,7 @@ export function renderInspector(hostEl, project, scene, actions) {
   typeField.className = 'field';
   typeField.innerHTML = '<span>Scene type</span>';
   const typeSelect = document.createElement('select');
+  typeSelect.dataset.focusKey = `scene-type-${scene.id}`;
   typeSelect.innerHTML = `
     <option value="${SceneType.START}">Start</option>
     <option value="${SceneType.INTERMEDIATE}">Intermediate</option>
@@ -113,6 +114,7 @@ export function renderInspector(hostEl, project, scene, actions) {
     const textarea = document.createElement('textarea');
     textarea.value = line.text || '';
     textarea.rows = 2;
+    textarea.dataset.focusKey = `dialogue-${scene.id}-${index}`;
     textarea.addEventListener('input', () => {
       actions.onUpdateDialogueText?.(scene.id, index, textarea.value);
     });
@@ -124,6 +126,7 @@ export function renderInspector(hostEl, project, scene, actions) {
     const audioInput = document.createElement('input');
     audioInput.type = 'file';
     audioInput.accept = 'audio/mpeg,audio/mp3';
+    audioInput.dataset.focusKey = `dialogue-audio-${scene.id}-${index}`;
     audioInput.addEventListener('change', (event) => {
       const file = event.target.files?.[0];
       actions.onSetDialogueAudio?.(scene.id, index, file || null);
@@ -183,12 +186,14 @@ export function renderInspector(hostEl, project, scene, actions) {
     labelInput.type = 'text';
     labelInput.placeholder = 'Choice label';
     labelInput.value = choice.label || '';
+    labelInput.dataset.focusKey = `choice-label-${scene.id}-${index}`;
     labelInput.addEventListener('input', () => {
       actions.onUpdateChoice?.(scene.id, index, { label: labelInput.value });
     });
     choiceRow.appendChild(labelInput);
 
     const select = document.createElement('select');
+    select.dataset.focusKey = `choice-target-${scene.id}-${index}`;
     const noneOption = document.createElement('option');
     noneOption.value = '';
     noneOption.textContent = 'Select destination';

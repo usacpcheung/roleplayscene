@@ -61,6 +61,18 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       && project.scenes.length > 1
       && (scene.type !== SceneType.START || otherStarts > 0);
 
+    const activeElement = document.activeElement;
+    const shouldRestoreFocus = Boolean(activeElement)
+      && inspectorHost.contains(activeElement)
+      && activeElement.dataset?.focusKey;
+    const focusKey = shouldRestoreFocus ? activeElement.dataset.focusKey : null;
+    const selectionStart = shouldRestoreFocus && typeof activeElement.selectionStart === 'number'
+      ? activeElement.selectionStart
+      : null;
+    const selectionEnd = shouldRestoreFocus && typeof activeElement.selectionEnd === 'number'
+      ? activeElement.selectionEnd
+      : null;
+
     renderGraph(graphHost, project, selectedId, (id) => {
       selectedId = id;
       validationResults = null;
@@ -83,6 +95,24 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       canDeleteScene,
       validationResults,
     });
+
+    if (focusKey) {
+      const nextFocus = inspectorHost.querySelector(`[data-focus-key="${focusKey}"]`);
+      if (nextFocus && typeof nextFocus.focus === 'function') {
+        nextFocus.focus();
+        if (
+          selectionStart !== null
+          && selectionEnd !== null
+          && typeof nextFocus.setSelectionRange === 'function'
+          && typeof nextFocus.value === 'string'
+        ) {
+          const max = nextFocus.value.length;
+          const start = Math.max(0, Math.min(selectionStart, max));
+          const end = Math.max(0, Math.min(selectionEnd, max));
+          nextFocus.setSelectionRange(start, end);
+        }
+      }
+    }
   }
 
   function addScene() {
