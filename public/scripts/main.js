@@ -2,6 +2,7 @@ import { Store } from './state.js';
 import { renderEditor } from './editor/editor.js';
 import { renderPlayer } from './player/player.js';
 import { importProject, exportProject } from './storage.js';
+import { validateProject } from './editor/validators.js';
 
 const elLeft = document.getElementById('left-pane');
 const elRight = document.getElementById('right-pane');
@@ -38,7 +39,30 @@ function setStatus(msg) {
 }
 
 btnEdit.addEventListener('click', () => setMode('edit'));
-btnPlay.addEventListener('click', () => setMode('play'));
+btnPlay.addEventListener('click', () => {
+  const result = validateProject(store.get().project);
+  if (result.errors.length) {
+    setStatus('Resolve validation errors before entering Play mode.');
+    if (mode !== 'edit') {
+      setMode('edit');
+    }
+    requestAnimationFrame(() => {
+      const panel = elRight.querySelector('.validation-results');
+      if (panel instanceof HTMLElement) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (!panel.hasAttribute('tabindex')) {
+          panel.setAttribute('tabindex', '-1');
+        }
+        if (typeof panel.focus === 'function') {
+          panel.focus({ preventScroll: true });
+        }
+      }
+    });
+    return;
+  }
+  setMode('play');
+  setStatus('');
+});
 
 btnImport.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', async (e) => {

@@ -31,14 +31,7 @@ export function renderInspector(hostEl, project, scene, actions) {
   deleteBtn.addEventListener('click', () => actions.onDeleteScene?.(scene.id));
   deleteBtn.disabled = !actions.canDeleteScene;
 
-  const validateBtn = document.createElement('button');
-  validateBtn.textContent = 'Validate';
-  validateBtn.addEventListener('click', async () => {
-    const result = await actions.onValidate?.();
-    renderValidation(result, validationBox);
-  });
-
-  controls.append(addBtn, deleteBtn, validateBtn);
+  controls.append(addBtn, deleteBtn);
   header.appendChild(controls);
   hostEl.appendChild(header);
 
@@ -228,9 +221,7 @@ export function renderInspector(hostEl, project, scene, actions) {
   choiceSection.appendChild(addChoiceBtn);
   hostEl.appendChild(choiceSection);
 
-  if (actions.validationResults) {
-    renderValidation(actions.validationResults, validationBox);
-  }
+  renderValidation(actions.validationResults, validationBox);
   hostEl.appendChild(validationBox);
 }
 

@@ -15,10 +15,8 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
   rightEl.appendChild(inspectorHost);
 
   let selectedId = store.get().project.scenes[0]?.id ?? null;
-  let validationResults = null;
 
   const unsubscribe = store.subscribe(() => {
-    validationResults = null;
     syncSelection();
     update();
   });
@@ -75,9 +73,10 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
 
     renderGraph(graphHost, project, selectedId, (id) => {
       selectedId = id;
-      validationResults = null;
       update();
     });
+
+    const validationResults = validateProject(project);
 
     renderInspector(inspectorHost, project, scene, {
       onAddScene: addScene,
@@ -91,7 +90,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       onAddChoice: addChoice,
       onRemoveChoice: removeChoice,
       onUpdateChoice: updateChoice,
-      onValidate: runValidation,
       canDeleteScene,
       validationResults,
     });
@@ -127,7 +125,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       scenes: [...prev.scenes, newScene],
     }));
     selectedId = newScene.id;
-    validationResults = null;
     setStatus(`Added scene ${newScene.id}.`);
   }
 
@@ -163,7 +160,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
     });
     const nextProject = store.get().project;
     selectedId = nextProject.scenes[0]?.id ?? null;
-    validationResults = null;
     setStatus(`Deleted scene ${sceneId}.`);
   }
 
@@ -185,7 +181,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
     setStatus(`Scene ${sceneId} set to ${type}.`);
   }
 
@@ -209,7 +204,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
     setStatus(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
   }
 
@@ -224,7 +218,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function removeDialogue(sceneId, index) {
@@ -241,7 +234,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function updateDialogueText(sceneId, index, text) {
@@ -255,7 +247,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function setDialogueAudio(sceneId, index, file) {
@@ -279,7 +270,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function addChoice(sceneId, choice) {
@@ -293,7 +283,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function removeChoice(sceneId, index) {
@@ -306,7 +295,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function updateChoice(sceneId, index, updates) {
@@ -320,14 +308,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
-  }
-
-  function runValidation() {
-    const result = validateProject(store.get().project);
-    validationResults = result;
-    setStatus(result.errors.length ? 'Validation failed.' : 'Validation passed.');
-    return result;
   }
 
   syncSelection();
