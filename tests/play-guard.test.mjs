@@ -6,9 +6,21 @@ function logResult(label, condition) {
   console.log(`${status}: ${label}`);
 }
 
-const validProject = createProject();
+const endScene = createScene({ type: SceneType.END, id: 'end-scene' });
+const startScene = createScene({
+  type: SceneType.START,
+  id: 'start-scene',
+  choices: [createChoice({ label: 'Finish', nextSceneId: 'end-scene' })],
+});
+const validProject = createProject({ scenes: [startScene, endScene] });
 const validResult = validateProject(validProject);
 logResult('Play allowed when validation passes', validResult.errors.length === 0);
+
+const noEndProject = createProject({
+  scenes: [createScene({ type: SceneType.START })],
+});
+const noEndResult = validateProject(noEndProject);
+logResult('Missing end scene blocks Play mode', noEndResult.errors.some(msg => msg.includes('at least 1 end scene')));
 
 const multiStartProject = createProject({
   scenes: [

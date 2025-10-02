@@ -17,7 +17,9 @@ export function validateProject(project) {
   }
 
   const endScenes = scenes.filter(scene => scene.type === SceneType.END);
-  if (endScenes.length > 3) {
+  if (endScenes.length < 1) {
+    errors.push('Project must have at least 1 end scene.');
+  } else if (endScenes.length > 3) {
     errors.push(`Project can have at most 3 end scenes (found ${endScenes.length}).`);
   }
 
