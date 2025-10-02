@@ -1,4 +1,6 @@
 // Simple store with pub/sub
+import { createProject } from './model.js';
+
 export class Store {
   constructor() {
     this.state = defaultState();
@@ -14,11 +16,7 @@ export class Store {
 
 function defaultState() {
   return {
-    project: {
-      meta: { title: 'Untitled Role Play', version: 1 },
-      scenes: [],
-      assets: []
-    },
+    project: createProject(),
     audioGate: false, // set to true after user gesture
   };
 }

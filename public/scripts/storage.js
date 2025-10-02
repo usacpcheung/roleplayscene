@@ -1,14 +1,56 @@
+import { createProject, createScene, createChoice } from './model.js';
+
 // Import/Export (JSON). IndexedDB stubbed for now.
 export async function importProject(store, file) {
   const text = await file.text();
   const json = JSON.parse(text);
-  // TODO: validate json structure
-  store.set({ project: json });
+  const sceneData = Array.isArray(json.scenes) ? json.scenes.slice(0, 20) : [];
+  const base = createProject({ ...json, scenes: sceneData });
+
+  const cleanedScenes = base.scenes.map(scene => {
+    const imported = createScene(scene);
+    imported.image = null;
+    imported.dialogue = imported.dialogue.map(line => ({ text: line.text || '', audio: null }));
+    imported.choices = imported.choices.map(choice => createChoice({
+      id: choice.id,
+      label: choice.label,
+      nextSceneId: choice.nextSceneId ?? null,
+    }));
+    return imported;
+  });
+
+  const project = {
+    meta: { ...base.meta },
+    scenes: cleanedScenes,
+    assets: [],
+  };
+
+  store.set({ project });
 }
 
 export async function exportProject(store) {
   const data = store.get().project;
-  const json = JSON.stringify(data, null, 2);
+  const serialised = {
+    meta: { ...data.meta },
+    scenes: data.scenes.map(scene => ({
+      id: scene.id,
+      type: scene.type,
+      image: scene.image ? { name: scene.image.name || '' } : null,
+      dialogue: scene.dialogue.map(line => ({
+        text: line.text,
+        audio: line.audio ? { name: line.audio.name || '' } : null,
+      })),
+      choices: scene.choices.map(choice => ({
+        id: choice.id,
+        label: choice.label,
+        nextSceneId: choice.nextSceneId ?? null,
+      })),
+      notes: scene.notes || '',
+    })),
+    assets: [],
+  };
+
+  const json = JSON.stringify(serialised, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

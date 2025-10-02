@@ -1,17 +1,68 @@
 // Schema helpers and factories
+import { newId } from './utils/id.js';
+
 export const SceneType = Object.freeze({
   START: 'start',
   INTERMEDIATE: 'intermediate',
   END: 'end',
 });
 
-export function createScene(id, type = SceneType.INTERMEDIATE) {
+function normaliseDialogueLine(line = {}) {
+  return {
+    text: line.text ?? '',
+    audio: line.audio ? { name: line.audio.name ?? '', objectUrl: line.audio.objectUrl ?? null } : null,
+  };
+}
+
+function normaliseChoice(choice = {}) {
+  return {
+    id: choice.id ?? newId('choice'),
+    label: choice.label ?? '',
+    nextSceneId: choice.nextSceneId ?? null,
+  };
+}
+
+export function createScene(options = {}) {
+  const {
+    id = newId('scene'),
+    type = SceneType.INTERMEDIATE,
+    image = null,
+    dialogue = [],
+    choices = [],
+    notes = '',
+  } = options;
+
+  const normalisedDialogue = dialogue.length
+    ? dialogue.slice(0, 2).map(normaliseDialogueLine)
+    : [normaliseDialogueLine()];
+
   return {
     id,
     type,
-    image: null,          // { name, blobId, width, height }
-    dialogue: [],         // up to 2 items: { text, audio? { name, blobId, duration } }
-    choices: [],          // up to 3 items: { id, label, nextSceneId }
-    notes: ''
+    image: image ? { name: image.name ?? '', objectUrl: image.objectUrl ?? null } : null,
+    dialogue: normalisedDialogue,
+    choices: choices.slice(0, 3).map(normaliseChoice),
+    notes,
+  };
+}
+
+export function createChoice(options = {}) {
+  return normaliseChoice(options);
+}
+
+export function createProject(options = {}) {
+  const meta = {
+    title: options.meta?.title ?? 'Untitled Role Play',
+    version: options.meta?.version ?? 1,
+  };
+
+  const scenes = options.scenes?.length
+    ? options.scenes.map(scene => createScene(scene))
+    : [createScene({ type: SceneType.START })];
+
+  return {
+    meta,
+    scenes,
+    assets: Array.isArray(options.assets) ? options.assets.slice() : [],
   };
 }

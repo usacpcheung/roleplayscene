@@ -16,15 +16,20 @@ const fileInput = document.getElementById('file-input');
 const store = new Store();
 
 let mode = 'edit'; // 'edit' | 'play'
+let teardown = null;
 
 function setMode(next) {
+  if (teardown) {
+    teardown();
+    teardown = null;
+  }
   mode = next;
   btnEdit.classList.toggle('active', mode === 'edit');
   btnPlay.classList.toggle('active', mode === 'play');
   if (mode === 'edit') {
-    renderEditor(store, elLeft, elRight, setStatus);
+    teardown = renderEditor(store, elLeft, elRight, setStatus);
   } else {
-    renderPlayer(store, elLeft, elRight, setStatus);
+    teardown = renderPlayer(store, elLeft, elRight, setStatus);
   }
 }
 
