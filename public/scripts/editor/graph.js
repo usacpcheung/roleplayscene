@@ -20,10 +20,17 @@ export function computeSceneGraphLayout(project) {
   const sceneById = new Map(scenes.map(scene => [scene.id, scene]));
   const adjacency = new Map();
   scenes.forEach(scene => {
-    const targets = (scene.choices ?? [])
-      .map(choice => choice.nextSceneId)
-      .filter(nextId => Boolean(nextId) && sceneById.has(nextId));
-    adjacency.set(scene.id, targets);
+    const targets = new Set();
+    (scene.choices ?? []).forEach(choice => {
+      const nextId = choice.nextSceneId;
+      if (nextId && sceneById.has(nextId)) {
+        targets.add(nextId);
+      }
+    });
+    if (scene.autoNextSceneId && sceneById.has(scene.autoNextSceneId)) {
+      targets.add(scene.autoNextSceneId);
+    }
+    adjacency.set(scene.id, Array.from(targets));
   });
 
   const startScene = scenes.find(scene => scene.type === SceneType.START) ?? scenes[0];
@@ -184,17 +191,18 @@ export function renderGraph(hostEl, project, selectedId, onSelect) {
   connectorsGroup.classList.add('graph-connectors');
 
   nodes.forEach(scene => {
-    if (!scene.choices?.length) return;
     const sourcePosition = layout.positions.get(scene.id);
     if (!sourcePosition) return;
     const sourceX = COLUMN_GAP + sourcePosition.column * (NODE_WIDTH + COLUMN_GAP) + NODE_WIDTH / 2;
     const sourceY = ROW_GAP + sourcePosition.row * (NODE_HEIGHT + ROW_GAP) + NODE_HEIGHT;
 
-    scene.choices.forEach(choice => {
-      const targetPosition = choice.nextSceneId
-        ? layout.positions.get(choice.nextSceneId)
-        : null;
+    const seenTargets = new Set();
+
+    const renderConnector = (targetId, className) => {
+      if (!targetId || seenTargets.has(targetId)) return;
+      const targetPosition = layout.positions.get(targetId);
       if (!targetPosition) return;
+      seenTargets.add(targetId);
       const targetX = COLUMN_GAP + targetPosition.column * (NODE_WIDTH + COLUMN_GAP) + NODE_WIDTH / 2;
       const targetY = ROW_GAP + targetPosition.row * (NODE_HEIGHT + ROW_GAP);
       const midY = sourceY === targetY
@@ -204,8 +212,19 @@ export function renderGraph(hostEl, project, selectedId, onSelect) {
       path.setAttribute('d', `M ${sourceX} ${sourceY} C ${sourceX} ${midY} ${targetX} ${midY} ${targetX} ${targetY}`);
       path.setAttribute('marker-end', 'url(#graph-arrowhead)');
       path.classList.add('graph-connector');
+      if (className) {
+        path.classList.add(className);
+      }
       connectorsGroup.appendChild(path);
+    };
+
+    (scene.choices ?? []).forEach(choice => {
+      renderConnector(choice.nextSceneId, null);
     });
+
+    if (scene.autoNextSceneId) {
+      renderConnector(scene.autoNextSceneId, 'is-auto-next');
+    }
   });
 
   svg.appendChild(connectorsGroup);

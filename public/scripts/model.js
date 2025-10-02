@@ -29,6 +29,7 @@ export function createScene(options = {}) {
     image = null,
     dialogue = [],
     choices = [],
+    autoNextSceneId = null,
     notes = '',
   } = options;
 
@@ -42,6 +43,7 @@ export function createScene(options = {}) {
     image: image ? { name: image.name ?? '', objectUrl: image.objectUrl ?? null } : null,
     dialogue: normalisedDialogue,
     choices: choices.slice(0, 3).map(normaliseChoice),
+    autoNextSceneId: type === SceneType.END ? null : (autoNextSceneId ?? null),
     notes,
   };
 }

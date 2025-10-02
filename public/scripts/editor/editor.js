@@ -46,6 +46,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
         audio: line.audio ? { ...line.audio } : null,
       })),
       choices: scene.choices.map(choice => ({ ...choice })),
+      autoNextSceneId: scene.autoNextSceneId ?? null,
     };
   }
 
@@ -90,6 +91,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       onAddChoice: addChoice,
       onRemoveChoice: removeChoice,
       onUpdateChoice: updateChoice,
+      onSetAutoNext: setAutoNext,
       canDeleteScene,
       validationResults,
     });
@@ -152,6 +154,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
         choices: s.choices.map(choice => (
           choice.nextSceneId === sceneId ? { ...choice, nextSceneId: null } : choice
         )),
+        autoNextSceneId: s.autoNextSceneId === sceneId ? null : s.autoNextSceneId ?? null,
       }));
       return {
         ...prev,
@@ -171,6 +174,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.type = type;
           if (type === SceneType.END) {
             draft.choices = [];
+            draft.autoNextSceneId = null;
           }
           return draft;
         }
@@ -279,6 +283,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
         if (scene.choices.length >= 3) return scene;
         const draft = cloneScene(scene);
         draft.choices = [...draft.choices, choice];
+        draft.autoNextSceneId = null;
         return draft;
       });
       return { ...prev, scenes };
@@ -304,6 +309,18 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
         const draft = cloneScene(scene);
         if (!draft.choices[index]) return draft;
         draft.choices[index] = { ...draft.choices[index], ...updates };
+        return draft;
+      });
+      return { ...prev, scenes };
+    });
+  }
+
+  function setAutoNext(sceneId, nextSceneId) {
+    mutateProject(prev => {
+      const scenes = prev.scenes.map(scene => {
+        if (scene.id !== sceneId) return scene;
+        const draft = cloneScene(scene);
+        draft.autoNextSceneId = draft.type === SceneType.END ? null : (nextSceneId ?? null);
         return draft;
       });
       return { ...prev, scenes };

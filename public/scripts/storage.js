@@ -1,4 +1,4 @@
-import { createProject, createScene, createChoice } from './model.js';
+import { createProject, createScene, createChoice, SceneType } from './model.js';
 
 // Import/Export (JSON). IndexedDB stubbed for now.
 export async function importProject(store, file) {
@@ -16,6 +16,8 @@ export async function importProject(store, file) {
       label: choice.label,
       nextSceneId: choice.nextSceneId ?? null,
     }));
+    const candidateAutoNext = scene.autoNextSceneId ?? null;
+    imported.autoNextSceneId = imported.type === SceneType.END ? null : candidateAutoNext;
     return imported;
   });
 
@@ -45,6 +47,7 @@ export async function exportProject(store) {
         label: choice.label,
         nextSceneId: choice.nextSceneId ?? null,
       })),
+      autoNextSceneId: scene.autoNextSceneId ?? null,
       notes: scene.notes || '',
     })),
     assets: [],

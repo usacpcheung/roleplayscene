@@ -219,6 +219,54 @@ export function renderInspector(hostEl, project, scene, actions) {
   addChoiceBtn.addEventListener('click', () => actions.onAddChoice?.(scene.id, createChoice()));
   addChoiceBtn.disabled = scene.choices.length >= 3 || scene.type === SceneType.END;
   choiceSection.appendChild(addChoiceBtn);
+
+  if (scene.type !== SceneType.END) {
+    const autoNextField = document.createElement('label');
+    autoNextField.className = 'field';
+    autoNextField.innerHTML = '<span>Auto-advance destination</span>';
+
+    const autoNextSelect = document.createElement('select');
+    autoNextSelect.dataset.focusKey = `auto-next-${scene.id}`;
+
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'No auto-advance';
+    autoNextSelect.appendChild(noneOption);
+
+    project.scenes.forEach(target => {
+      if (target.id === scene.id) return;
+      const option = document.createElement('option');
+      option.value = target.id;
+      option.textContent = target.id;
+      autoNextSelect.appendChild(option);
+    });
+
+    const hasChoices = scene.choices.length > 0;
+    const validSelection = scene.autoNextSceneId && project.scenes.some(target => target.id === scene.autoNextSceneId)
+      ? scene.autoNextSceneId
+      : '';
+    autoNextSelect.value = validSelection || '';
+    if (hasChoices) {
+      autoNextSelect.value = '';
+      autoNextSelect.disabled = true;
+    }
+
+    autoNextSelect.addEventListener('change', () => {
+      const value = autoNextSelect.value || null;
+      actions.onSetAutoNext?.(scene.id, value);
+    });
+
+    autoNextField.appendChild(autoNextSelect);
+
+    if (hasChoices) {
+      const helper = document.createElement('p');
+      helper.className = 'hint';
+      helper.textContent = 'Remove choices to enable auto-advance.';
+      autoNextField.appendChild(helper);
+    }
+
+    choiceSection.appendChild(autoNextField);
+  }
   hostEl.appendChild(choiceSection);
 
   renderValidation(actions.validationResults, validationBox);

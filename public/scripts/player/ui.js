@@ -192,14 +192,35 @@ export function renderPlayerUI({ stageEl, uiEl, project, scene, onChoice }) {
     endMessage.textContent = 'The End';
     choiceBox.appendChild(endMessage);
   } else {
-    if (!scene.choices.length) {
-      const noChoices = document.createElement('p');
-      noChoices.className = 'empty';
-      noChoices.textContent = 'No choices available.';
-      choiceBox.appendChild(noChoices);
+    const sceneChoices = scene.choices || [];
+    const autoNextId = scene.autoNextSceneId ?? null;
+    const autoNextValid = Boolean(autoNextId)
+      && project.scenes.some(s => s.id === autoNextId);
+
+    if (!sceneChoices.length) {
+      if (autoNextId) {
+        const continueButton = document.createElement('button');
+        continueButton.type = 'button';
+        continueButton.textContent = 'Continue';
+        continueButton.disabled = !autoNextValid;
+        if (!autoNextValid) {
+          continueButton.title = 'Destination scene is missing.';
+        }
+        continueButton.addEventListener('click', () => {
+          if (autoNextValid && autoNextId) {
+            onChoice?.(autoNextId);
+          }
+        });
+        choiceBox.appendChild(continueButton);
+      } else {
+        const noChoices = document.createElement('p');
+        noChoices.className = 'empty';
+        noChoices.textContent = 'No choices available.';
+        choiceBox.appendChild(noChoices);
+      }
     }
 
-    scene.choices.forEach(choice => {
+    sceneChoices.forEach(choice => {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = choice.label || 'Continue';
