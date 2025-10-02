@@ -1,0 +1,17 @@
+# Node & tooling
+node_modules/
+dist/
+.vite/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+*.zip
