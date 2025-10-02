@@ -15,6 +15,8 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   rightEl.appendChild(uiPanel);
 
   let currentSceneId = null;
+  let sceneHistory = [];
+  let historyIndex = -1;
   let backgroundVolume = 0.4;
   let backgroundMuted = false;
   const backgroundTrack = createBackgroundAudioController({ defaultVolume: backgroundVolume });
@@ -23,13 +25,23 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   const unsubscribe = store.subscribe(() => {
     if (!currentSceneId) return;
     const { project } = store.get();
-    if (!project.scenes.some(scene => scene.id === currentSceneId)) {
+    syncHistoryWithProject(project);
+
+    if (!sceneHistory.length) {
+      return;
+    }
+
+    if (!currentSceneId) {
       const start = findStartScene(project);
-      currentSceneId = start?.id ?? null;
+      if (start) {
+        beginRunAt(start.id);
+      } else {
+        renderIntro();
+      }
+      return;
     }
-    if (currentSceneId) {
-      renderCurrentScene();
-    }
+
+    renderCurrentScene();
   });
 
   function cleanup() {
@@ -44,6 +56,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   function renderIntro() {
     const { project } = store.get();
     backgroundTrack.stop();
+    resetHistory();
     stage.innerHTML = '';
     const introStage = document.createElement('div');
     introStage.className = 'stage-empty';
@@ -62,15 +75,20 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
         showMessage('No Start scene found.');
         return;
       }
-      backgroundTrack.stop();
-      currentSceneId = startScene.id;
-      renderCurrentScene();
+      beginRunAt(startScene.id);
     });
     uiPanel.append(title, startBtn);
   }
 
   function renderCurrentScene() {
     const { project } = store.get();
+    syncHistoryWithProject(project);
+
+    if (!currentSceneId) {
+      renderIntro();
+      return;
+    }
+
     const scene = project.scenes.find(s => s.id === currentSceneId);
     if (!scene) {
       backgroundTrack.stop();
@@ -88,7 +106,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
       scene,
       onChoice: (nextId) => {
         backgroundTrack.stop();
-        currentSceneId = nextId;
+        pushSceneToHistory(nextId);
         renderCurrentScene();
       },
       backgroundAudioControls: store.get().audioGate
@@ -106,6 +124,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
             },
           }
         : null,
+      historyControls: createHistoryControls(project),
     });
   }
 
@@ -122,6 +141,112 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     backgroundTrack.setVolume(backgroundVolume);
     backgroundTrack.setMuted(backgroundMuted);
     backgroundTrack.play(source);
+  }
+
+  function beginRunAt(sceneId) {
+    if (!sceneId) return;
+    backgroundTrack.stop();
+    sceneHistory = [sceneId];
+    historyIndex = 0;
+    currentSceneId = sceneId;
+    renderCurrentScene();
+  }
+
+  function resetHistory() {
+    sceneHistory = [];
+    historyIndex = -1;
+    currentSceneId = null;
+  }
+
+  function pushSceneToHistory(sceneId) {
+    if (!sceneId) {
+      return;
+    }
+    if (historyIndex < sceneHistory.length - 1) {
+      sceneHistory = sceneHistory.slice(0, historyIndex + 1);
+    }
+    if (sceneHistory[sceneHistory.length - 1] !== sceneId) {
+      sceneHistory.push(sceneId);
+    }
+    historyIndex = sceneHistory.length - 1;
+    currentSceneId = sceneId;
+  }
+
+  function syncHistoryWithProject(project) {
+    if (!sceneHistory.length) {
+      return;
+    }
+
+    const availableIds = new Set(project.scenes.map(scene => scene.id));
+    const filtered = sceneHistory.filter(id => availableIds.has(id));
+
+    if (!filtered.length) {
+      resetHistory();
+      return;
+    }
+
+    if (filtered.length !== sceneHistory.length) {
+      sceneHistory = filtered;
+    }
+
+    if (historyIndex >= sceneHistory.length) {
+      historyIndex = sceneHistory.length - 1;
+    }
+
+    currentSceneId = sceneHistory[historyIndex] ?? null;
+  }
+
+  function goToHistoryIndex(index) {
+    if (index < 0 || index >= sceneHistory.length) {
+      return;
+    }
+    historyIndex = index;
+    currentSceneId = sceneHistory[index];
+    backgroundTrack.stop();
+    renderCurrentScene();
+  }
+
+  function navigateHistory(delta) {
+    goToHistoryIndex(historyIndex + delta);
+  }
+
+  function createHistoryControls(project) {
+    if (!sceneHistory.length) {
+      return null;
+    }
+
+    const entries = sceneHistory
+      .map((sceneId) => {
+        const scene = project.scenes.find(s => s.id === sceneId);
+        if (!scene) {
+          return null;
+        }
+        const fallback = scene.id || sceneId;
+        const firstLine = scene.dialogue?.[0]?.text?.trim();
+        const label = firstLine ? firstLine : fallback;
+        return { sceneId, label };
+      })
+      .filter(Boolean);
+
+    if (!entries.length) {
+      return null;
+    }
+
+    const clampedIndex = Math.max(0, Math.min(historyIndex, entries.length - 1));
+    if (clampedIndex !== historyIndex) {
+      historyIndex = clampedIndex;
+      currentSceneId = sceneHistory[historyIndex];
+    }
+
+    return {
+      entries,
+      index: historyIndex,
+      canGoBack: historyIndex > 0,
+      canGoForward: historyIndex < entries.length - 1,
+      onBack: () => navigateHistory(-1),
+      onForward: () => navigateHistory(1),
+      onJump: (index) => goToHistoryIndex(index),
+    };
   }
 
   renderIntro();

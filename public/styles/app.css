@@ -43,6 +43,16 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 .dialogue-line textarea { width: 100%; }
 .audio-info { font-size: 0.85rem; color: #374151; display: flex; align-items: center; gap: 0.5rem; }
 .player-panel { display: grid; gap: 1rem; }
+.player-history { display: grid; gap: 0.5rem; padding: 0.75rem 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }
+.player-history-title { margin: 0; font-size: 0.95rem; color: #1f2937; }
+.player-history-nav { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.player-history-nav button { padding: 0.4rem 0.75rem; font-size: 0.95rem; }
+.player-history-nav button:disabled { opacity: 0.5; cursor: not-allowed; }
+.player-history-list { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0; padding: 0; }
+.player-history-list li { margin: 0; }
+.player-history-entry { padding: 0.35rem 0.75rem; border: 1px solid #d1d5db; border-radius: 999px; background: #fff; color: #111827; cursor: pointer; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+.player-history-entry:disabled { cursor: default; opacity: 0.85; }
+.player-history-entry[aria-current] { background: #1d4ed8; border-color: #1d4ed8; color: #fff; cursor: default; }
 .player-dialogue { display: grid; gap: 0.75rem; padding: 1rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; }
 .player-dialogue-line { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .audio-play { padding: 0.25rem 0.5rem; }

@@ -1,6 +1,14 @@
 import { SceneType } from '../model.js';
 
-export function renderPlayerUI({ stageEl, uiEl, project, scene, onChoice, backgroundAudioControls = null }) {
+export function renderPlayerUI({
+  stageEl,
+  uiEl,
+  project,
+  scene,
+  onChoice,
+  backgroundAudioControls = null,
+  historyControls = null,
+}) {
   stageEl.innerHTML = '';
   uiEl.innerHTML = '';
 
@@ -83,6 +91,71 @@ export function renderPlayerUI({ stageEl, uiEl, project, scene, onChoice, backgr
 
     bgControls.appendChild(muteButton);
     uiEl.appendChild(bgControls);
+  }
+
+  if (historyControls?.entries?.length) {
+    const historyWrapper = document.createElement('div');
+    historyWrapper.className = 'player-history';
+
+    const historyTitle = document.createElement('h4');
+    historyTitle.className = 'player-history-title';
+    historyTitle.textContent = 'Story history';
+    historyWrapper.appendChild(historyTitle);
+
+    const navControls = document.createElement('div');
+    navControls.className = 'player-history-nav';
+
+    const backButton = document.createElement('button');
+    backButton.type = 'button';
+    backButton.className = 'player-history-back';
+    backButton.textContent = '← Back';
+    backButton.disabled = !historyControls.canGoBack;
+    backButton.setAttribute('aria-label', 'Go to previous scene');
+    if (historyControls.onBack) {
+      backButton.addEventListener('click', () => historyControls.onBack());
+    }
+
+    const forwardButton = document.createElement('button');
+    forwardButton.type = 'button';
+    forwardButton.className = 'player-history-forward';
+    forwardButton.textContent = 'Forward →';
+    forwardButton.disabled = !historyControls.canGoForward;
+    forwardButton.setAttribute('aria-label', 'Go to next scene');
+    if (historyControls.onForward) {
+      forwardButton.addEventListener('click', () => historyControls.onForward());
+    }
+
+    navControls.appendChild(backButton);
+    navControls.appendChild(forwardButton);
+    historyWrapper.appendChild(navControls);
+
+    const historyList = document.createElement('ol');
+    historyList.className = 'player-history-list';
+    historyList.setAttribute('aria-label', 'Visited scenes');
+
+    historyControls.entries.forEach((entry, index) => {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'player-history-entry';
+      button.textContent = entry.label || entry.sceneId;
+      if (button.dataset) {
+        button.dataset.sceneId = entry.sceneId;
+      }
+
+      if (index === historyControls.index) {
+        button.disabled = true;
+        button.setAttribute('aria-current', 'step');
+      } else if (historyControls.onJump) {
+        button.addEventListener('click', () => historyControls.onJump(index));
+      }
+
+      item.appendChild(button);
+      historyList.appendChild(item);
+    });
+
+    historyWrapper.appendChild(historyList);
+    uiEl.appendChild(historyWrapper);
   }
 
   const dialogueBox = document.createElement('div');
