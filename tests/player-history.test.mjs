@@ -135,6 +135,20 @@ function getHistoryButtons(root) {
   return buttons;
 }
 
+const HISTORY_LABEL_MAX_LENGTH = 30;
+
+function truncateHistoryLabel(text) {
+  if (!text) {
+    return text;
+  }
+  const glyphs = Array.from(text);
+  if (glyphs.length <= HISTORY_LABEL_MAX_LENGTH) {
+    return text;
+  }
+  const sliceLength = Math.max(1, HISTORY_LABEL_MAX_LENGTH - 1);
+  return `${glyphs.slice(0, sliceLength).join('')}…`;
+}
+
 function logResult(label, condition) {
   const status = condition ? 'OK' : 'FAIL';
   console.log(`${status}: ${label}`);
@@ -154,7 +168,11 @@ const project = {
       type: SceneType.START,
       image: null,
       backgroundAudio: null,
-      dialogue: [{ text: 'Opening scene', audio: null }],
+      dialogue: [{
+        text:
+          'This is a very long first line that should be truncated in the history panel to keep things tidy.',
+        audio: null,
+      }],
       choices: [
         { id: 'c1', label: 'To middle', nextSceneId: 'middle' },
         { id: 'c2', label: 'Alternate path', nextSceneId: 'alt' },
@@ -218,6 +236,13 @@ logResult(
   'Initial entry marked current',
   historyButtons.length === 1 && historyButtons[0].disabled && historyButtons[0].getAttribute('aria-current') === 'step',
 );
+
+const initialHistoryButton = historyButtons[0];
+const longFirstLine = project.scenes[0].dialogue[0].text;
+const expectedTruncatedLabel = truncateHistoryLabel(longFirstLine);
+logResult('History entry label truncated', initialHistoryButton?.textContent === expectedTruncatedLabel);
+logResult('History entry title retains full text', initialHistoryButton?.getAttribute('title') === longFirstLine);
+logResult('History entry aria-label retains full text', initialHistoryButton?.getAttribute('aria-label') === longFirstLine);
 
 let backButton = findElement(uiHost, el => (el.className || '') === 'player-history-back');
 logResult('Back button disabled at start', Boolean(backButton?.disabled));
