@@ -158,7 +158,26 @@ button:disabled {
 .player-history-nav button:disabled { opacity: 0.6; cursor: not-allowed; }
 .player-history-list { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-xs); margin: 0; padding: 0; }
 .player-history-list li { margin: 0; }
-.player-history-entry { padding: var(--space-2xs) var(--space-sm); border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text); cursor: pointer; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+.player-history-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.player-history-entry::before {
+  content: '→';
+  color: currentColor;
+  display: inline-block;
+  font-size: 0.85em;
+  line-height: 1;
+}
 .player-history-entry:hover:not(:disabled) { background: var(--color-surface-alt); box-shadow: var(--shadow-subtle); }
 .player-history-entry:disabled { cursor: default; opacity: 0.85; }
 .player-history-entry[aria-current] { background: var(--color-accent); border-color: var(--color-accent); color: #fff; cursor: default; box-shadow: var(--shadow-subtle); }
