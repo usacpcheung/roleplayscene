@@ -491,14 +491,18 @@ export function renderPlayerUI({
     const lineContainer = document.createElement('div');
     lineContainer.className = 'player-dialogue-line';
 
+    const bubble = document.createElement('div');
+    bubble.className = 'player-dialogue-bubble';
+    lineContainer.appendChild(bubble);
+
     const text = document.createElement('p');
     text.textContent = line.text || `(Line ${index + 1})`;
-    lineContainer.appendChild(text);
+    bubble.appendChild(text);
 
     if (line.audio?.objectUrl) {
       const playButton = document.createElement('button');
       playButton.type = 'button';
-      playButton.className = 'audio-play';
+      playButton.className = 'dialogue-bubble-play';
       playButton.textContent = '▶️ Play line';
       playButton.setAttribute('aria-pressed', 'false');
 
@@ -527,7 +531,7 @@ export function renderPlayerUI({
           },
         });
       });
-      lineContainer.appendChild(playButton);
+      bubble.appendChild(playButton);
     }
 
     dialogueBox.appendChild(lineContainer);
