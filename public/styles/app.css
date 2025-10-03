@@ -118,8 +118,8 @@ button:disabled {
   aspect-ratio: 16 / 9;
   width: 100%;
   min-height: 300px;
-  background: #111;
-  color: #eee;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-soft);
@@ -130,7 +130,7 @@ button:disabled {
   object-fit: contain;
   object-position: center;
 }
-.stage-empty { padding: var(--space-lg); color: #9ca3af; }
+.stage-empty { padding: var(--space-lg); color: var(--color-text-muted); }
 .graph-container { min-height: 100%; overflow: auto; padding: var(--space-md); }
 .graph-empty { color: var(--color-text-muted); text-align: center; margin-top: var(--space-lg); }
 .graph-host { display: flex; justify-content: center; align-items: flex-start; }
