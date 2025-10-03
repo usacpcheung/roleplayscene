@@ -12,11 +12,51 @@ export function renderPlayerUI({
   stageEl.innerHTML = '';
   uiEl.innerHTML = '';
 
+  const activePlaybackCleanups = new Set();
+  let activeSequence = null;
+
+  const stopAndResetAudio = (audio) => {
+    if (typeof audio.pause === 'function') {
+      audio.pause();
+    }
+    try {
+      audio.currentTime = 0;
+    } catch (err) {
+      // Ignore reset failures (e.g., when audio is not seekable yet).
+    }
+  };
+
+  const trackPlayback = (cleanup) => {
+    let active = true;
+    const stop = () => {
+      if (!active) {
+        return;
+      }
+      active = false;
+      cleanup();
+      activePlaybackCleanups.delete(stop);
+    };
+    activePlaybackCleanups.add(stop);
+    return stop;
+  };
+
+  const stopAllPlayback = () => {
+    if (activeSequence) {
+      const sequence = activeSequence;
+      activeSequence = null;
+      sequence.stop();
+    }
+    const cleanups = Array.from(activePlaybackCleanups);
+    cleanups.forEach(cleanup => {
+      cleanup();
+    });
+  };
+
   if (!scene) {
     const placeholder = document.createElement('p');
     placeholder.textContent = 'No scene selected.';
     uiEl.appendChild(placeholder);
-    return;
+    return stopAllPlayback;
   }
 
   if (scene.image?.objectUrl) {
@@ -165,8 +205,6 @@ export function renderPlayerUI({
     .map((line, index) => ({ line, index }))
     .filter(entry => entry.line.audio?.objectUrl);
 
-  let activeSequence = null;
-
   if (audioEntries.length) {
     const playAllButton = document.createElement('button');
     playAllButton.type = 'button';
@@ -182,8 +220,8 @@ export function renderPlayerUI({
     const startSequence = () => {
       let cancelled = false;
       let currentIndex = 0;
-      let activeCleanup = null;
       let sequenceActive = true;
+      let activeCleanup = null;
 
       const handleFailure = err => {
         console.warn('Audio playback failed', err);
@@ -219,43 +257,52 @@ export function renderPlayerUI({
 
         const audio = new Audio(entry.line.audio.objectUrl);
 
-        const cleanup = () => {
-          audio.removeEventListener('ended', onEnded);
-          audio.removeEventListener('error', onError);
-          if (typeof audio.pause === 'function') {
-            audio.pause();
+        let stopPlayback = null;
+
+        const finishLine = () => {
+          if (stopPlayback) {
+            stopPlayback();
+            stopPlayback = null;
           }
-          audio.currentTime = 0;
           activeCleanup = null;
         };
 
         const onEnded = () => {
-          cleanup();
+          finishLine();
           currentIndex += 1;
           playNext();
         };
 
         const onError = event => {
-          cleanup();
-          handleFailure(event?.error ?? event);
+          const error = event?.error ?? event;
+          finishLine();
+          handleFailure(error);
         };
-
-        activeCleanup = cleanup;
 
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('error', onError);
+
+        stopPlayback = trackPlayback(() => {
+          audio.removeEventListener('ended', onEnded);
+          audio.removeEventListener('error', onError);
+          stopAndResetAudio(audio);
+        });
+
+        activeCleanup = finishLine;
 
         try {
           const playAttempt = audio.play();
           if (playAttempt?.catch) {
             playAttempt.catch(err => {
-              cleanup();
-              handleFailure(err);
+              const failure = err?.error ?? err;
+              finishLine();
+              handleFailure(failure);
             });
           }
         } catch (err) {
-          cleanup();
-          handleFailure(err);
+          const failure = err?.error ?? err;
+          finishLine();
+          handleFailure(failure);
         }
       };
 
@@ -302,12 +349,49 @@ export function renderPlayerUI({
       playButton.type = 'button';
       playButton.className = 'audio-play';
       playButton.textContent = '▶️ Play line';
-      playButton.addEventListener('click', async () => {
-        try {
-          const audio = new Audio(line.audio.objectUrl);
-          await audio.play();
-        } catch (err) {
+      playButton.addEventListener('click', () => {
+        const audio = new Audio(line.audio.objectUrl);
+        let stopPlayback = null;
+
+        const finishPlayback = () => {
+          if (stopPlayback) {
+            stopPlayback();
+            stopPlayback = null;
+          }
+        };
+
+        const reportFailure = (error) => {
+          const err = error?.error ?? error;
           console.warn('Audio playback failed', err);
+          finishPlayback();
+        };
+
+        const onEnded = () => {
+          finishPlayback();
+        };
+
+        const onError = (event) => {
+          reportFailure(event);
+        };
+
+        audio.addEventListener('ended', onEnded);
+        audio.addEventListener('error', onError);
+
+        stopPlayback = trackPlayback(() => {
+          audio.removeEventListener('ended', onEnded);
+          audio.removeEventListener('error', onError);
+          stopAndResetAudio(audio);
+        });
+
+        try {
+          const playAttempt = audio.play();
+          if (playAttempt?.catch) {
+            playAttempt.catch(err => {
+              reportFailure(err);
+            });
+          }
+        } catch (err) {
+          reportFailure(err);
         }
       });
       lineContainer.appendChild(playButton);
@@ -370,4 +454,6 @@ export function renderPlayerUI({
   }
 
   uiEl.appendChild(choiceBox);
+
+  return stopAllPlayback;
 }

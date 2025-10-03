@@ -20,6 +20,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   let backgroundVolume = 0.4;
   let backgroundMuted = false;
   let defaultBackgroundSource = null;
+  let activeDialogueCleanup = null;
   const backgroundTrack = createBackgroundAudioController({ defaultVolume: backgroundVolume });
   backgroundTrack.setVolume(backgroundVolume);
 
@@ -45,7 +46,16 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     renderCurrentScene();
   });
 
+  function stopActiveDialogue() {
+    if (activeDialogueCleanup) {
+      const cleanupFn = activeDialogueCleanup;
+      activeDialogueCleanup = null;
+      cleanupFn();
+    }
+  }
+
   function cleanup() {
+    stopActiveDialogue();
     unsubscribe();
     backgroundTrack.teardown();
   }
@@ -78,6 +88,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   }
 
   function renderIntro() {
+    stopActiveDialogue();
     const { project } = store.get();
     maybeStopBeforeScene(null);
     resetHistory();
@@ -105,6 +116,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   }
 
   function renderCurrentScene() {
+    stopActiveDialogue();
     const { project } = store.get();
     syncHistoryWithProject(project);
 
@@ -123,12 +135,13 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
 
     syncBackgroundAudio(scene);
 
-    renderPlayerUI({
+    const dialogueCleanup = renderPlayerUI({
       stageEl: stage,
       uiEl: uiPanel,
       project,
       scene,
       onChoice: (nextId) => {
+        stopActiveDialogue();
         const nextScene = findSceneById(project, nextId);
         maybeStopBeforeScene(nextScene);
         pushSceneToHistory(nextId);
@@ -151,6 +164,8 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
         : null,
       historyControls: createHistoryControls(project),
     });
+
+    activeDialogueCleanup = typeof dialogueCleanup === 'function' ? dialogueCleanup : null;
   }
 
   function syncBackgroundAudio(scene) {
@@ -230,6 +245,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     if (index < 0 || index >= sceneHistory.length) {
       return;
     }
+    stopActiveDialogue();
     const { project } = store.get();
     const nextSceneId = sceneHistory[index];
     const nextScene = findSceneById(project, nextSceneId);
