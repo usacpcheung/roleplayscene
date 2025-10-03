@@ -1,92 +1,91 @@
-# RolePlayScene (client-side branching story builder)
+# RolePlayScene
 
-A 100% front-end tool (HTML/CSS/JS) for building and playing simple branching role-play stories. Creators can define up to **20 scenes** (exactly **1 Start**, up to **3 Endings**, the rest Intermediate). Each scene supports **1 image**, **up to 2 dialogue lines** (each may include optional audio), and **up to 3 response choices** that branch to other scenes. No server—everything runs in the browser. Projects export to a **self-contained `.zip` archive** (with media + manifest) and can still import legacy `.json` files; state is also **autosaved** to IndexedDB while you work.
+RolePlayScene is a browser-only builder for compact branching role-play stories. Authors can outline up to **20 scenes** (with exactly **1 Start** and up to **3 Ends**), attach imagery and background audio, script short dialogue exchanges, and wire choices or auto-advance transitions—all without a backend. Projects live entirely on the client: edits persist to IndexedDB, manual exports produce a zipped archive containing media, and imports accept both those archives and legacy JSON snapshots.
 
-## ✨ Features
-- **Edit Mode**: graph canvas + inspector to add scenes, set Start/End, upload image/MP3s, author dialogue & choices, connect branches.
-- **Play Mode**: left **Stage** shows scene image; right **Dialogue** auto-steps lines (with audio); then shows choices to branch.
-- **Validation**: exactly 1 Start; ≤3 Endings; ≤20 scenes; no broken links; warns on unreachable scenes.
-- **Storage**: Autosave to IndexedDB with graceful fallbacks; manual export creates a `.zip` archive (manifest + binary media) while import accepts both `.zip` and legacy `.json` snapshots.
-- **Privacy**: all processing happens locally in the browser.
-- **Mobile friendly**: touch targets, iOS autoplay guard (“Start Playback”).
-- **A11y**: keyboard navigation, visible focus, text captions with audio.
+## Current capabilities
+### Story authoring (Edit mode)
+- **Graph workspace** renders the scene network using an automatic breadth-first layout. Selecting nodes opens the inspector while validation issues surface beside the canvas.
+- **Scene editor** lets you:
+  - Switch between `Start`, `Intermediate`, and `End` scene types (enforcing the single Start / ≤3 Ends rule).
+  - Upload one stage image per scene.
+  - Attach a looping background track (any audio MIME type) with remove/replace controls.
+  - Script up to **two dialogue lines**, each with optional MP3 narration upload.
+  - Add up to **three choices** (label + destination) or configure a single auto-advance target when choices are absent.
+  - Manage project metadata (title), add new scenes, and delete existing ones while respecting the 20-scene cap.
+- **Validation panel** runs on every change and highlights missing destinations, unreachable scenes, auto-advance conflicts, and other rule violations.
 
-## 🧱 Tech & architecture
-- **No build required**: vanilla ES modules + CSS.
-- **Local preview**: any static file server (e.g. `npx http-server public -p 4173`).
-- **Data**: project state kept in memory and mirrored to IndexedDB; export produces a zipped archive (`project.json` manifest + binary media) and import accepts both the archive and JSON snapshots.
-- **Audio**: HTMLAudio (simple) with user-gesture gate; can upgrade to Web Audio API for fine control later.
-- **Graph**: lightweight node/edge model; pan/zoom canvas.
+### Story playback (Play mode)
+- **Audio gate** ensures the first run begins after an explicit user gesture, satisfying modern autoplay policies.
+- **Stage & dialogue renderer** plays scene imagery and steps through dialogue (and per-line narration) automatically; users can replay lines if narration fails.
+- **Background music controller** keeps a persistent track across scenes, exposing volume and mute toggles when audio is unlocked.
+- **Choice & auto-advance handling** supports branching via buttons, seamless auto-next transitions, and detection of missing scenes.
+- **History viewer** maintains the visited scene list with back/forward controls and jump-to-scene navigation for debugging or quick playthroughs.
 
-### Suggested directory layout
+### Persistence & portability
+- **Autosave**: all changes debounce into IndexedDB; friendly status messages warn if the browser blocks storage or previously saved data cannot be read.
+- **Import**: accepts `.zip` archives that include `project.json` and binary media (packed via [fflate](public/scripts/vendor/fflate.module.js)) or raw JSON snapshots, hydrating blobs back into fresh `objectURL`s.
+- **Export**: packages the current project into a `.zip` archive (`project.json` manifest + media files) ready to download, then reseeds IndexedDB with the exported snapshot to keep browser storage aligned.
+
+### Accessibility & UX
+- Keyboard focus management across the editor, inspector, and player panels.
+- Visible focus states and semantic markup for controls (including history navigation and validation summaries).
+- Audio captions through always-present dialogue text.
+- Touch-friendly targets for graph nodes, buttons, and sliders.
+
+## Architecture at a glance
+- **Vanilla ES modules** served statically from `/public`; no bundler or build step.
+- **State management** via a simple `Store` (immutable-ish updates + subscriptions) in [`public/scripts/state.js`](public/scripts/state.js).
+- **Domain model** definitions, factories, and migrations in [`model.js`](public/scripts/model.js).
+- **Editor modules** (`editor/`) cover the graph renderer, inspector form logic, validation utilities, and shared DOM helpers.
+- **Player modules** (`player/`) provide the runtime state machine, audio controllers, dialogue sequencing, and UI composition.
+- **Persistence layer** (`storage.js`) bridges IndexedDB autosave, import/export, and archive assembly.
+- **Utilities** house small helpers (`dom`, `id`, `zip`) plus the vendored fflate module for ZIP handling.
+
+A typical repository layout looks like:
 ```
-/public
+public/
   index.html
-  /assets       # optional static icons/fonts (not user media)
-  /styles
+  styles/
     app.css
-  /scripts
-    main.js            # entry, mode switching, global events
-    state.js           # app state store, pub/sub
-    model.js           # schema, validators, migrations
-    storage.js         # IndexedDB adapter + import/export (JSON)
+  scripts/
+    main.js              # bootstrap + mode switching
+    state.js             # store implementation
+    model.js             # schema + factories
+    storage.js           # IndexedDB + import/export
     editor/
-      editor.js        # edit mode controller
-      graph.js         # graph canvas (render, pan/zoom, hit test)
-      inspector.js     # scene form (image/mp3 upload, dialogue, choices)
-      validators.js    # constraints, reachability, broken links
+      editor.js          # edit-mode controller + graph wiring
+      graph.js           # layout + SVG rendering
+      inspector.js       # scene form + validation renderers
+      validators.js      # structural rules + reachability checks
     player/
-      player.js        # play mode runtime, scene transitions
-      audio.js         # audio gate, preload, play/stop helpers
-      ui.js            # stage + dialogue panel rendering
+      player.js          # runtime state machine + audio
+      audio.js           # autoplay gate + background mixer
+      ui.js              # stage/dialogue/choice/history rendering
     utils/
-      dom.js, id.js, throttle.js
-/tests
-  unit/                # model, validators, transitions
-  e2e/                 # playthroughs to endings
+      dom.js, id.js, zip.js
+    vendor/
+      fflate.module.js   # ZIP compression/decompression
 ```
 
-## 🗃️ Data model snapshot
-
-### In-memory project shape
+## Data model snapshot
 ```js
 {
   meta: { title: 'My Role Play', version: 1 },
   scenes: [{
     id: 'scene-001',
     type: 'start' | 'intermediate' | 'end',
-    image: {
-      name: 'start.png',
-      objectUrl: 'blob:https://…',
-      blob: File | Blob | null,
-    } | null,
-    backgroundAudio: {
-      name: 'loop.mp3',
-      objectUrl: 'blob:https://…',
-      blob: File | Blob | null,
-    } | null,
-    dialogue: [{
-      text: 'Hello!',
-      audio: {
-        name: 'hello.mp3',
-        objectUrl: 'blob:https://…',
-        blob: File | Blob | null,
-      } | null,
-    }],
-    choices: [{ id: 'choice-1', label: 'Yes', nextSceneId: 'scene-002' }],
-    autoNextSceneId: null,
-    notes: '',
+    image: { name, objectUrl, blob } | null,
+    backgroundAudio: { name, objectUrl, blob } | null,
+    dialogue: [{ text, audio: { name, objectUrl, blob } | null }],
+    choices: [{ id, label, nextSceneId }],
+    autoNextSceneId: null | 'scene-002',
+    notes: ''
   }],
-  assets: [],
+  assets: []
 }
 ```
 
-### Serialized for persistence / export
-- **Autosave / legacy export**: persists the pre-existing JSON snapshot (media references contain names only).
-- **`.zip` export**: creates an archive with `project.json` + binary assets.
-
-`project.json` acts as a manifest:
-
+Serialized exports upgrade this shape into a manifest:
 ```json
 {
   "manifestVersion": 1,
@@ -119,44 +118,31 @@ A 100% front-end tool (HTML/CSS/JS) for building and playing simple branching ro
   }
 }
 ```
+Binary files referenced via `path` sit alongside `project.json` within the archive.
 
-For each manifest entry with a `path`, the archive includes a binary file at that path. Asset sizes therefore equal the sum of all blobs (plus a few KB for JSON/ZIP overhead). When exporting or importing large media bundles the UI displays “Preparing export…” / “Importing project…” statuses so users know the operation is still running.
+## Running locally
+1. Install a modern Node.js runtime (18+) to execute unit tests.
+2. Serve the `/public` directory using any static file server, e.g. `npx http-server public -p 4173` or `python -m http.server 4173 --directory public`.
+3. Visit `http://localhost:4173` in a supported browser (latest Chrome, Edge, Firefox, Safari). iOS Safari will prompt for the initial audio unlock gesture.
 
-## ✅ Validation rules
-- Exactly **1** scene marked `type = "start"`.
-- **0–3** scenes marked `type = "end"`.
-- **1–20** total scenes.
-- Each choice must reference an existing `nextSceneId`.
-- Every non-Start scene must be reachable from Start.
-- End scenes cannot have outgoing choices.
+## Testing
+- Execute all unit tests with:
+  ```sh
+  for f in tests/*.test.mjs; do
+    echo "Running $f"
+    node "$f"
+  done
+  ```
+- Coverage spans graph layout, validators (including auto-advance constraints), storage/IndexedDB adapters, and the player’s background audio + playback controls.
 
-## 🧭 User flows
-**Edit Mode** → create scenes, mark Start/End, add dialogue (≤2 lines), add choices (≤3), connect edges, Validate, Save/Export.  
-**Play Mode** → Start Playback → show image & dialogue (with audio) → show choices → transition → reach End.
+## Security & privacy
+- No network calls or external analytics; everything remains client-side.
+- Media files never leave the browser.
+- Export/download interactions run via temporary `objectURL`s that are revoked immediately after use.
 
-## 🔈 Audio considerations
-Autoplay is gated by a user gesture; provide Mute/Unmute and Replay controls; preload next scene assets.
-
-## ♿ Accessibility
-Keyboard navigation, focus styles, ARIA roles, visible captions.
-
-## 📱 Browser support
-Latest Chrome/Edge/Firefox/Safari. iOS Safari requires an initial tap for audio.
-
-## 🚀 Getting started (dev)
-1. Install a recent Node.js runtime (18+) for running tests.
-2. Start a static server from the repo root, e.g. `npx http-server public -p 4173` or `python -m http.server 4173 --directory public`.
-3. Visit `http://localhost:4173` and the app will boot into Edit mode after setting up persistence.
-
-## 🧪 Testing
-- Run all unit tests: `for f in tests/*.test.mjs; do echo "Running $f"; node "$f"; done`
-- Key coverage includes model helpers, validators, and IndexedDB serialization/hydration round-trips.
-
-## 🔒 Security & privacy
-No network calls; media handled locally; warn on export.
-
-## 🗺️ Roadmap
-PWA, undo/redo, graph screenshot, shareable self-contained HTML player, local analytics.
-
-## 📄 License
-MIT (tbd by repository owner).
+## Roadmap
+1. **Editor quality-of-life** – drag-to-reposition nodes, inline scene notes, and keyboard shortcuts for faster authoring.
+2. **Undo/redo history** – transactional store updates and UI affordances for reversing recent edits.
+3. **Richer exports** – optional single-file HTML player alongside ZIP, plus metadata for branching analytics.
+4. **Offline readiness** – lightweight PWA manifest/service worker to allow installable offline editing (while respecting storage limits).
+5. **Media management** – bulk asset inspector with warnings for oversized audio/images and tools to relink missing media.
