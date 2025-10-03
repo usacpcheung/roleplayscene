@@ -9,6 +9,7 @@
   --color-text-muted: #5b6372;
   --color-accent: #2563eb;
   --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #93c5fd;
   --color-danger-bg: #fde8e8;
   --color-danger-border: #f8c4c4;
   --color-danger-text: #8c1b1b;
@@ -168,18 +169,20 @@ button:disabled {
 .player-choices button {
   padding: var(--space-sm) var(--space-md);
   font-size: var(--font-size-base);
-  background: var(--color-accent);
-  color: #fff;
-  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  border-color: var(--color-accent-soft);
   box-shadow: var(--shadow-soft);
 }
 .player-choices button:hover:not(:disabled) {
-  background: var(--color-accent-strong);
-  border-color: var(--color-accent-strong);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
 }
 .player-choices button:active:not(:disabled) {
-  background: #1e3fae;
-  border-color: #1e3fae;
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+  color: #fff;
 }
 .player-choices button:disabled {
   background: var(--color-border-subtle);
