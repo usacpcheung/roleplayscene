@@ -122,6 +122,7 @@ fileInput.addEventListener('change', async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
+    showMessage('Importing project…');
     await importProject(store, file);
     showMessage('Imported project.');
     setMode('edit');
@@ -135,8 +136,9 @@ fileInput.addEventListener('change', async (e) => {
 
 btnExport.addEventListener('click', async () => {
   try {
+    showMessage('Preparing export…');
     await exportProject(store);
-    showMessage('Exported project JSON.');
+    showMessage('Exported project archive.');
   } catch (err) {
     console.error(err);
     showMessage('Export failed.');

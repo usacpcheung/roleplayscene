@@ -81,6 +81,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     const validationResults = validateProject(project);
 
     renderInspector(inspectorHost, project, scene, {
+      onUpdateProjectTitle: updateProjectTitle,
       onAddScene: addScene,
       onDeleteScene: deleteScene,
       onSetSceneType: setSceneType,
@@ -115,6 +116,17 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
         }
       }
     }
+  }
+
+  function updateProjectTitle(title) {
+    const value = typeof title === 'string' ? title : '';
+    mutateProject(prev => ({
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        title: value,
+      },
+    }));
   }
 
   function addScene() {
