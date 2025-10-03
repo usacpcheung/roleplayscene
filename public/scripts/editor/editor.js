@@ -41,6 +41,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
   function cloneScene(scene) {
     return {
       ...scene,
+      backgroundAudio: scene.backgroundAudio ? { ...scene.backgroundAudio } : null,
       dialogue: scene.dialogue.map(line => ({
         text: line.text,
         audio: line.audio ? { ...line.audio } : null,
@@ -80,10 +81,12 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     const validationResults = validateProject(project);
 
     renderInspector(inspectorHost, project, scene, {
+      onUpdateProjectTitle: updateProjectTitle,
       onAddScene: addScene,
       onDeleteScene: deleteScene,
       onSetSceneType: setSceneType,
       onSetSceneImage: setSceneImage,
+      onSetSceneBackgroundAudio: setSceneBackgroundAudio,
       onAddDialogue: addDialogue,
       onRemoveDialogue: removeDialogue,
       onUpdateDialogueText: updateDialogueText,
@@ -115,6 +118,17 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     }
   }
 
+  function updateProjectTitle(title) {
+    const value = typeof title === 'string' ? title : '';
+    mutateProject(prev => ({
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        title: value,
+      },
+    }));
+  }
+
   function addScene() {
     const { project } = store.get();
     if (project.scenes.length >= 20) {
@@ -141,6 +155,9 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     }
     if (scene.image?.objectUrl) {
       URL.revokeObjectURL(scene.image.objectUrl);
+    }
+    if (scene.backgroundAudio?.objectUrl) {
+      URL.revokeObjectURL(scene.backgroundAudio.objectUrl);
     }
     scene.dialogue.forEach(line => {
       if (line.audio?.objectUrl) {
@@ -202,6 +219,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.image = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
@@ -209,6 +227,32 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       return { ...prev, scenes };
     });
     showMessage(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
+  }
+
+  function setSceneBackgroundAudio(sceneId, file) {
+    mutateProject(prev => {
+      const scenes = prev.scenes.map(scene => {
+        if (scene.id !== sceneId) return scene;
+        const draft = cloneScene(scene);
+        if (draft.backgroundAudio?.objectUrl) {
+          URL.revokeObjectURL(draft.backgroundAudio.objectUrl);
+        }
+        if (!file) {
+          draft.backgroundAudio = null;
+        } else {
+          draft.backgroundAudio = {
+            name: file.name,
+            objectUrl: URL.createObjectURL(file),
+            blob: file,
+          };
+        }
+        return draft;
+      });
+      return { ...prev, scenes };
+    });
+    showMessage(file
+      ? `Updated background audio for ${sceneId}.`
+      : `Removed background audio for ${sceneId}.`);
   }
 
   function addDialogue(sceneId) {
@@ -268,6 +312,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.dialogue[index].audio = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;

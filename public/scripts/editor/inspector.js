@@ -4,15 +4,27 @@ export function renderInspector(hostEl, project, scene, actions) {
   hostEl.innerHTML = '';
   hostEl.classList.add('inspector');
 
+  const projectTitleField = document.createElement('label');
+  projectTitleField.className = 'field';
+  projectTitleField.innerHTML = '<span>Project title</span>';
+  const projectTitleInput = document.createElement('input');
+  projectTitleInput.type = 'text';
+  projectTitleInput.value = project.meta?.title ?? '';
+  projectTitleInput.placeholder = 'Untitled Role Play';
+  projectTitleInput.maxLength = 120;
+  projectTitleInput.dataset.focusKey = 'project-title';
+  projectTitleInput.addEventListener('input', () => {
+    actions.onUpdateProjectTitle?.(projectTitleInput.value);
+  });
+  projectTitleField.appendChild(projectTitleInput);
+  hostEl.appendChild(projectTitleField);
+
   if (!scene) {
     const empty = document.createElement('p');
     empty.textContent = 'No scenes yet. Use “Add Scene” to begin.';
     hostEl.appendChild(empty);
     return;
   }
-
-  const validationBox = document.createElement('div');
-  validationBox.className = 'validation-results';
 
   const header = document.createElement('div');
   header.className = 'inspector-header';
@@ -90,6 +102,43 @@ export function renderInspector(hostEl, project, scene, actions) {
   }
 
   hostEl.appendChild(imageField);
+
+  const backgroundField = document.createElement('div');
+  backgroundField.className = 'field';
+  const backgroundLabel = document.createElement('span');
+  backgroundLabel.textContent = 'Background music';
+  backgroundField.appendChild(backgroundLabel);
+
+  if (scene.backgroundAudio) {
+    const info = document.createElement('div');
+    info.className = 'audio-info';
+    info.textContent = `Attached: ${scene.backgroundAudio.name || 'Untitled track'}`;
+    backgroundField.appendChild(info);
+  } else {
+    const emptyInfo = document.createElement('p');
+    emptyInfo.className = 'hint';
+    emptyInfo.textContent = 'No background track selected.';
+    backgroundField.appendChild(emptyInfo);
+  }
+
+  const backgroundInput = document.createElement('input');
+  backgroundInput.type = 'file';
+  backgroundInput.accept = 'audio/*';
+  backgroundInput.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    actions.onSetSceneBackgroundAudio?.(scene.id, file || null);
+  });
+  backgroundField.appendChild(backgroundInput);
+
+  if (scene.backgroundAudio) {
+    const removeBgButton = document.createElement('button');
+    removeBgButton.type = 'button';
+    removeBgButton.textContent = 'Remove background music';
+    removeBgButton.addEventListener('click', () => actions.onSetSceneBackgroundAudio?.(scene.id, null));
+    backgroundField.appendChild(removeBgButton);
+  }
+
+  hostEl.appendChild(backgroundField);
 
   // Dialogue
   const dialogueSection = document.createElement('section');
@@ -269,19 +318,20 @@ export function renderInspector(hostEl, project, scene, actions) {
   }
   hostEl.appendChild(choiceSection);
 
-  renderValidation(actions.validationResults, validationBox);
-  hostEl.appendChild(validationBox);
 }
 
-function renderValidation(result, host) {
+export function renderValidation(result, host, options = {}) {
+  const { showEmptyState = true } = options;
   host.innerHTML = '';
   if (!result) return;
   const { errors = [], warnings = [] } = result;
   if (!errors.length && !warnings.length) {
-    const ok = document.createElement('p');
-    ok.className = 'validation-ok';
-    ok.textContent = 'No validation issues found.';
-    host.appendChild(ok);
+    if (showEmptyState) {
+      const ok = document.createElement('p');
+      ok.className = 'validation-ok';
+      ok.textContent = 'No validation issues found.';
+      host.appendChild(ok);
+    }
     return;
   }
 
