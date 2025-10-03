@@ -276,16 +276,20 @@ export function renderPlayerUI({
     return () => dialogueAudio.stop();
   }
 
+  const stageMedia = document.createElement('div');
+  stageMedia.className = 'stage-media';
+  stageEl.appendChild(stageMedia);
+
   if (scene.image?.objectUrl) {
     const img = document.createElement('img');
     img.src = scene.image.objectUrl;
     img.alt = `${scene.id} artwork`;
-    stageEl.appendChild(img);
+    stageMedia.appendChild(img);
   } else {
     const emptyStage = document.createElement('div');
     emptyStage.className = 'stage-empty';
     emptyStage.textContent = 'No stage image';
-    stageEl.appendChild(emptyStage);
+    stageMedia.appendChild(emptyStage);
   }
 
   if (backgroundAudioControls) {
