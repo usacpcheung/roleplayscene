@@ -118,11 +118,16 @@ export function createBackgroundAudioController({ defaultVolume = 0.4 } = {}) {
     }
   }
 
+  function getCurrentSource() {
+    return activeSrc;
+  }
+
   return {
     play,
     stop,
     teardown: stop,
     setVolume,
     setMuted,
+    getCurrentSource,
   };
 }
