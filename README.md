@@ -1,12 +1,12 @@
 # RolePlayScene (client-side branching story builder)
 
-A 100% front-end tool (HTML/CSS/JS) for building and playing simple branching role-play stories. Creators can define up to **20 scenes** (exactly **1 Start**, up to **3 Endings**, the rest Intermediate). Each scene supports **1 image**, **up to 2 dialogue lines** (each may include optional audio), and **up to 3 response choices** that branch to other scenes. No server—everything runs in the browser. Projects can be **exported/imported** as JSON and are **autosaved** to IndexedDB while you work.
+A 100% front-end tool (HTML/CSS/JS) for building and playing simple branching role-play stories. Creators can define up to **20 scenes** (exactly **1 Start**, up to **3 Endings**, the rest Intermediate). Each scene supports **1 image**, **up to 2 dialogue lines** (each may include optional audio), and **up to 3 response choices** that branch to other scenes. No server—everything runs in the browser. Projects export to a **self-contained `.zip` archive** (with media + manifest) and can still import legacy `.json` files; state is also **autosaved** to IndexedDB while you work.
 
 ## ✨ Features
 - **Edit Mode**: graph canvas + inspector to add scenes, set Start/End, upload image/MP3s, author dialogue & choices, connect branches.
 - **Play Mode**: left **Stage** shows scene image; right **Dialogue** auto-steps lines (with audio); then shows choices to branch.
 - **Validation**: exactly 1 Start; ≤3 Endings; ≤20 scenes; no broken links; warns on unreachable scenes.
-- **Storage**: Autosave to IndexedDB with graceful fallbacks; manual export/import via JSON.
+- **Storage**: Autosave to IndexedDB with graceful fallbacks; manual export creates a `.zip` archive (manifest + binary media) while import accepts both `.zip` and legacy `.json` snapshots.
 - **Privacy**: all processing happens locally in the browser.
 - **Mobile friendly**: touch targets, iOS autoplay guard (“Start Playback”).
 - **A11y**: keyboard navigation, visible focus, text captions with audio.
@@ -14,7 +14,7 @@ A 100% front-end tool (HTML/CSS/JS) for building and playing simple branching ro
 ## 🧱 Tech & architecture
 - **No build required**: vanilla ES modules + CSS.
 - **Local preview**: any static file server (e.g. `npx http-server public -p 4173`).
-- **Data**: project state kept in memory and mirrored to IndexedDB; export/import as JSON snapshots.
+- **Data**: project state kept in memory and mirrored to IndexedDB; export produces a zipped archive (`project.json` manifest + binary media) and import accepts both the archive and JSON snapshots.
 - **Audio**: HTMLAudio (simple) with user-gesture gate; can upgrade to Web Audio API for fine control later.
 - **Graph**: lightweight node/edge model; pan/zoom canvas.
 
@@ -82,22 +82,45 @@ A 100% front-end tool (HTML/CSS/JS) for building and playing simple branching ro
 ```
 
 ### Serialized for persistence / export
+- **Autosave / legacy export**: persists the pre-existing JSON snapshot (media references contain names only).
+- **`.zip` export**: creates an archive with `project.json` + binary assets.
+
+`project.json` acts as a manifest:
+
 ```json
 {
-  "meta": { "title": "My Role Play", "version": 1 },
-  "scenes": [{
-    "id": "scene-001",
-    "type": "start",
-    "image": { "name": "start.png" },
-    "backgroundAudio": null,
-    "dialogue": [{ "text": "Hello!", "audio": { "name": "hello.mp3" } }],
-    "choices": [{ "id": "choice-1", "label": "Yes", "nextSceneId": "scene-002" }],
-    "autoNextSceneId": null,
-    "notes": ""
-  }],
-  "assets": []
+  "manifestVersion": 1,
+  "project": {
+    "meta": { "title": "My Role Play", "version": 1 },
+    "scenes": [{
+      "id": "scene-001",
+      "type": "start",
+      "image": {
+        "name": "start.png",
+        "type": "image/png",
+        "size": 34567,
+        "path": "media/scene-1/image.png"
+      },
+      "backgroundAudio": null,
+      "dialogue": [{
+        "text": "Hello!",
+        "audio": {
+          "name": "hello.mp3",
+          "type": "audio/mpeg",
+          "size": 78901,
+          "path": "media/scene-1/dialogue-1.mp3"
+        }
+      }],
+      "choices": [{ "id": "choice-1", "label": "Yes", "nextSceneId": "scene-002" }],
+      "autoNextSceneId": null,
+      "notes": ""
+    }],
+    "assets": []
+  }
 }
 ```
+
+For each manifest entry with a `path`, the archive includes a binary file at that path. Asset sizes therefore equal the sum of all blobs (plus a few KB for JSON/ZIP overhead). When exporting or importing large media bundles the UI displays “Preparing export…” / “Importing project…” statuses so users know the operation is still running.
 
 ## ✅ Validation rules
 - Exactly **1** scene marked `type = "start"`.
