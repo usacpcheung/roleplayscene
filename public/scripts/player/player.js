@@ -259,6 +259,20 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     goToHistoryIndex(historyIndex + delta);
   }
 
+  const HISTORY_LABEL_MAX_LENGTH = 30;
+
+  const truncateHistoryLabel = (text) => {
+    if (!text) {
+      return text;
+    }
+    const glyphs = Array.from(text);
+    if (glyphs.length <= HISTORY_LABEL_MAX_LENGTH) {
+      return text;
+    }
+    const sliceLength = Math.max(1, HISTORY_LABEL_MAX_LENGTH - 1);
+    return `${glyphs.slice(0, sliceLength).join('')}…`;
+  };
+
   function createHistoryControls(project) {
     if (!sceneHistory.length) {
       return null;
@@ -272,8 +286,9 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
         }
         const fallback = scene.id || sceneId;
         const firstLine = scene.dialogue?.[0]?.text?.trim();
-        const label = firstLine ? firstLine : fallback;
-        return { sceneId, label };
+        const fullLabel = firstLine || fallback;
+        const label = truncateHistoryLabel(fullLabel);
+        return { sceneId, label, fullLabel };
       })
       .filter(Boolean);
 

@@ -420,7 +420,13 @@ export function renderPlayerUI({
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'player-history-entry';
-      button.textContent = entry.label || entry.sceneId;
+      const displayLabel = entry.label ?? entry.fullLabel ?? entry.sceneId;
+      const accessibleLabel = entry.fullLabel ?? entry.label ?? entry.sceneId;
+      button.textContent = displayLabel || '';
+      if (accessibleLabel) {
+        button.setAttribute('title', accessibleLabel);
+        button.setAttribute('aria-label', accessibleLabel);
+      }
       if (button.dataset) {
         button.dataset.sceneId = entry.sceneId;
       }

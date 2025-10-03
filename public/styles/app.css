@@ -156,12 +156,44 @@ button:disabled {
 }
 .player-history-nav button:hover:not(:disabled) { background: var(--color-surface-alt); box-shadow: none; }
 .player-history-nav button:disabled { opacity: 0.6; cursor: not-allowed; }
-.player-history-list { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-xs); margin: 0; padding: 0; }
-.player-history-list li { margin: 0; }
-.player-history-entry { padding: var(--space-2xs) var(--space-sm); border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text); cursor: pointer; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+.player-history-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0;
+  row-gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+}
+.player-history-list li {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+.player-history-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
 .player-history-entry:hover:not(:disabled) { background: var(--color-surface-alt); box-shadow: var(--shadow-subtle); }
 .player-history-entry:disabled { cursor: default; opacity: 0.85; }
 .player-history-entry[aria-current] { background: var(--color-accent); border-color: var(--color-accent); color: #fff; cursor: default; box-shadow: var(--shadow-subtle); }
+.player-history-list li + li::before {
+  content: '→';
+  color: currentColor;
+  font-size: 0.85em;
+  line-height: 1;
+  margin: 0 var(--space-2xs);
+}
 .player-dialogue { display: grid; gap: var(--space-sm); padding: var(--space-md); background: var(--color-surface); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); box-shadow: var(--shadow-subtle); }
 .player-dialogue-line { display: flex; justify-content: flex-start; padding-bottom: var(--space-xs); width: 100%; }
 .player-dialogue-bubble {
