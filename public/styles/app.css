@@ -114,9 +114,9 @@ button:disabled {
   min-height: 0;
 }
 .placeholder { border: 2px dashed var(--color-border); border-radius: var(--radius-md); padding: var(--space-lg); text-align: center; color: var(--color-text-muted); background: var(--color-surface); box-shadow: var(--shadow-subtle); }
-.stage { display: flex; align-items: center; justify-content: center; background: #111; color: #eee; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-soft); max-height: 100%; width: 100%; min-height: 0; }
+.stage { display: flex; align-items: center; justify-content: center; background: var(--color-surface-alt); color: var(--color-text); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-soft); max-height: 100%; width: 100%; min-height: 0; }
 .stage img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
-.stage-empty { padding: var(--space-lg); color: #9ca3af; }
+.stage-empty { padding: var(--space-lg); color: var(--color-text-muted); }
 .graph-container { min-height: 100%; overflow: auto; padding: var(--space-md); }
 .graph-empty { color: var(--color-text-muted); text-align: center; margin-top: var(--space-lg); }
 .graph-host { display: flex; justify-content: center; align-items: flex-start; }
