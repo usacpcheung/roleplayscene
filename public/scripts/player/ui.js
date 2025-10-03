@@ -1,5 +1,31 @@
 import { SceneType } from '../model.js';
 
+const CONTROL_ICON_PATHS = {
+  play: 'M8 5v14l11-7z',
+  stop: 'M6 6h12v12H6z',
+};
+
+function createControlIcon(initial = 'play') {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  svg.classList.add('audio-icon');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('fill', 'currentColor');
+  svg.appendChild(path);
+
+  const set = (type) => {
+    const data = CONTROL_ICON_PATHS[type] ?? '';
+    path.setAttribute('d', data);
+  };
+
+  set(initial);
+
+  return { element: svg, set };
+}
+
 function createDialogueAudioController() {
   let audio = null;
   let activeMode = null;
@@ -242,23 +268,31 @@ export function renderPlayerUI({
   let activeLineIndex = null;
 
   const setLineButtonState = (index, active) => {
-    const button = lineButtons.get(index);
-    if (!button) {
+    const control = lineButtons.get(index);
+    if (!control) {
       return;
     }
+
+    const { button, label, icon, lineNumber } = control;
 
     if (active) {
       if (activeLineIndex !== null && activeLineIndex !== index) {
         setLineButtonState(activeLineIndex, false);
       }
       activeLineIndex = index;
-      button.textContent = '⏹ Stop line';
+      icon.set('stop');
+      button.classList.add('is-active');
+      label.textContent = 'Stop line';
+      button.setAttribute('aria-label', `Stop audio for dialogue line ${lineNumber}`);
       button.setAttribute('aria-pressed', 'true');
     } else {
       if (activeLineIndex === index) {
         activeLineIndex = null;
       }
-      button.textContent = '▶️ Play line';
+      icon.set('play');
+      button.classList.remove('is-active');
+      label.textContent = 'Play line';
+      button.setAttribute('aria-label', `Play audio for dialogue line ${lineNumber}`);
       button.setAttribute('aria-pressed', 'false');
     }
   };
@@ -424,12 +458,21 @@ export function renderPlayerUI({
 
   let playAllActive = false;
 
+  let playAllIcon = null;
+  let playAllLabel = null;
+
   const setPlayAllState = (active) => {
     playAllActive = active;
-    if (!playAllButton) {
+    if (!playAllButton || !playAllIcon || !playAllLabel) {
       return;
     }
-    playAllButton.textContent = active ? '⏹ Stop playback' : '▶️ Play all';
+    playAllIcon.set(active ? 'stop' : 'play');
+    playAllButton.classList.toggle('is-active', active);
+    playAllLabel.textContent = active ? 'Stop playback' : 'Play all';
+    playAllButton.setAttribute(
+      'aria-label',
+      active ? 'Stop playback of all dialogue audio' : 'Play all dialogue audio sequentially',
+    );
     playAllButton.setAttribute('aria-pressed', active ? 'true' : 'false');
     playAllButton.disabled = false;
   };
@@ -439,10 +482,16 @@ export function renderPlayerUI({
   if (audioEntries.length) {
     playAllButton = document.createElement('button');
     playAllButton.type = 'button';
-    playAllButton.className = 'audio-play-all';
-    playAllButton.textContent = '▶️ Play all';
-    playAllButton.setAttribute('aria-label', 'Play all dialogue audio');
+    playAllButton.className = 'audio-play-all audio-control';
+    playAllButton.setAttribute('aria-label', 'Play all dialogue audio sequentially');
     playAllButton.setAttribute('aria-pressed', 'false');
+
+    playAllIcon = createControlIcon('play');
+    playAllLabel = document.createElement('span');
+    playAllLabel.className = 'audio-play-label';
+    playAllLabel.textContent = 'Play all';
+
+    playAllButton.append(playAllIcon.element, playAllLabel);
 
     const revertPlayAll = () => {
       setPlayAllState(false);
@@ -484,25 +533,46 @@ export function renderPlayerUI({
       );
     });
 
-    dialogueBox.appendChild(playAllButton);
+    const dialogueControls = document.createElement('div');
+    dialogueControls.className = 'player-dialogue-controls';
+    dialogueControls.appendChild(playAllButton);
+    dialogueBox.appendChild(dialogueControls);
   }
 
   scene.dialogue.forEach((line, index) => {
     const lineContainer = document.createElement('div');
     lineContainer.className = 'player-dialogue-line';
 
+    const bubble = document.createElement('div');
+    bubble.className = 'player-dialogue-bubble';
+
     const text = document.createElement('p');
+    text.className = 'player-dialogue-text';
     text.textContent = line.text || `(Line ${index + 1})`;
-    lineContainer.appendChild(text);
+    bubble.appendChild(text);
 
     if (line.audio?.objectUrl) {
       const playButton = document.createElement('button');
       playButton.type = 'button';
-      playButton.className = 'audio-play';
-      playButton.textContent = '▶️ Play line';
+      playButton.className = 'audio-play audio-control';
       playButton.setAttribute('aria-pressed', 'false');
 
-      lineButtons.set(index, playButton);
+      const playIcon = createControlIcon('play');
+      const playLabel = document.createElement('span');
+      playLabel.className = 'audio-play-label';
+      playLabel.textContent = 'Play line';
+
+      playButton.append(playIcon.element, playLabel);
+
+      const lineNumber = index + 1;
+      playButton.setAttribute('aria-label', `Play audio for dialogue line ${lineNumber}`);
+
+      lineButtons.set(index, {
+        button: playButton,
+        label: playLabel,
+        icon: playIcon,
+        lineNumber,
+      });
 
       playButton.addEventListener('click', () => {
         const wasActive = activeLineIndex === index;
@@ -527,9 +597,13 @@ export function renderPlayerUI({
           },
         });
       });
-      lineContainer.appendChild(playButton);
+      bubble.appendChild(playButton);
+      lineContainer.classList.add('player-dialogue-line--with-audio');
+    } else {
+      lineContainer.classList.add('player-dialogue-line--without-audio');
     }
 
+    lineContainer.appendChild(bubble);
     dialogueBox.appendChild(lineContainer);
   });
 
