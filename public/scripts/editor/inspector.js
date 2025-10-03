@@ -4,15 +4,27 @@ export function renderInspector(hostEl, project, scene, actions) {
   hostEl.innerHTML = '';
   hostEl.classList.add('inspector');
 
+  const projectTitleField = document.createElement('label');
+  projectTitleField.className = 'field';
+  projectTitleField.innerHTML = '<span>Project title</span>';
+  const projectTitleInput = document.createElement('input');
+  projectTitleInput.type = 'text';
+  projectTitleInput.value = project.meta?.title ?? '';
+  projectTitleInput.placeholder = 'Untitled Role Play';
+  projectTitleInput.maxLength = 120;
+  projectTitleInput.dataset.focusKey = 'project-title';
+  projectTitleInput.addEventListener('input', () => {
+    actions.onUpdateProjectTitle?.(projectTitleInput.value);
+  });
+  projectTitleField.appendChild(projectTitleInput);
+  hostEl.appendChild(projectTitleField);
+
   if (!scene) {
     const empty = document.createElement('p');
     empty.textContent = 'No scenes yet. Use “Add Scene” to begin.';
     hostEl.appendChild(empty);
     return;
   }
-
-  const validationBox = document.createElement('div');
-  validationBox.className = 'validation-results';
 
   const header = document.createElement('div');
   header.className = 'inspector-header';
@@ -31,14 +43,7 @@ export function renderInspector(hostEl, project, scene, actions) {
   deleteBtn.addEventListener('click', () => actions.onDeleteScene?.(scene.id));
   deleteBtn.disabled = !actions.canDeleteScene;
 
-  const validateBtn = document.createElement('button');
-  validateBtn.textContent = 'Validate';
-  validateBtn.addEventListener('click', async () => {
-    const result = await actions.onValidate?.();
-    renderValidation(result, validationBox);
-  });
-
-  controls.append(addBtn, deleteBtn, validateBtn);
+  controls.append(addBtn, deleteBtn);
   header.appendChild(controls);
   hostEl.appendChild(header);
 
@@ -97,6 +102,43 @@ export function renderInspector(hostEl, project, scene, actions) {
   }
 
   hostEl.appendChild(imageField);
+
+  const backgroundField = document.createElement('div');
+  backgroundField.className = 'field';
+  const backgroundLabel = document.createElement('span');
+  backgroundLabel.textContent = 'Background music';
+  backgroundField.appendChild(backgroundLabel);
+
+  if (scene.backgroundAudio) {
+    const info = document.createElement('div');
+    info.className = 'audio-info';
+    info.textContent = `Attached: ${scene.backgroundAudio.name || 'Untitled track'}`;
+    backgroundField.appendChild(info);
+  } else {
+    const emptyInfo = document.createElement('p');
+    emptyInfo.className = 'hint';
+    emptyInfo.textContent = 'No background track selected.';
+    backgroundField.appendChild(emptyInfo);
+  }
+
+  const backgroundInput = document.createElement('input');
+  backgroundInput.type = 'file';
+  backgroundInput.accept = 'audio/*';
+  backgroundInput.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    actions.onSetSceneBackgroundAudio?.(scene.id, file || null);
+  });
+  backgroundField.appendChild(backgroundInput);
+
+  if (scene.backgroundAudio) {
+    const removeBgButton = document.createElement('button');
+    removeBgButton.type = 'button';
+    removeBgButton.textContent = 'Remove background music';
+    removeBgButton.addEventListener('click', () => actions.onSetSceneBackgroundAudio?.(scene.id, null));
+    backgroundField.appendChild(removeBgButton);
+  }
+
+  hostEl.appendChild(backgroundField);
 
   // Dialogue
   const dialogueSection = document.createElement('section');
@@ -226,23 +268,70 @@ export function renderInspector(hostEl, project, scene, actions) {
   addChoiceBtn.addEventListener('click', () => actions.onAddChoice?.(scene.id, createChoice()));
   addChoiceBtn.disabled = scene.choices.length >= 3 || scene.type === SceneType.END;
   choiceSection.appendChild(addChoiceBtn);
+
+  if (scene.type !== SceneType.END) {
+    const autoNextField = document.createElement('label');
+    autoNextField.className = 'field';
+    autoNextField.innerHTML = '<span>Auto-advance destination</span>';
+
+    const autoNextSelect = document.createElement('select');
+    autoNextSelect.dataset.focusKey = `auto-next-${scene.id}`;
+
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'No auto-advance';
+    autoNextSelect.appendChild(noneOption);
+
+    project.scenes.forEach(target => {
+      if (target.id === scene.id) return;
+      const option = document.createElement('option');
+      option.value = target.id;
+      option.textContent = target.id;
+      autoNextSelect.appendChild(option);
+    });
+
+    const hasChoices = scene.choices.length > 0;
+    const validSelection = scene.autoNextSceneId && project.scenes.some(target => target.id === scene.autoNextSceneId)
+      ? scene.autoNextSceneId
+      : '';
+    autoNextSelect.value = validSelection || '';
+    if (hasChoices) {
+      autoNextSelect.value = '';
+      autoNextSelect.disabled = true;
+    }
+
+    autoNextSelect.addEventListener('change', () => {
+      const value = autoNextSelect.value || null;
+      actions.onSetAutoNext?.(scene.id, value);
+    });
+
+    autoNextField.appendChild(autoNextSelect);
+
+    if (hasChoices) {
+      const helper = document.createElement('p');
+      helper.className = 'hint';
+      helper.textContent = 'Remove choices to enable auto-advance.';
+      autoNextField.appendChild(helper);
+    }
+
+    choiceSection.appendChild(autoNextField);
+  }
   hostEl.appendChild(choiceSection);
 
-  if (actions.validationResults) {
-    renderValidation(actions.validationResults, validationBox);
-  }
-  hostEl.appendChild(validationBox);
 }
 
-function renderValidation(result, host) {
+export function renderValidation(result, host, options = {}) {
+  const { showEmptyState = true } = options;
   host.innerHTML = '';
   if (!result) return;
   const { errors = [], warnings = [] } = result;
   if (!errors.length && !warnings.length) {
-    const ok = document.createElement('p');
-    ok.className = 'validation-ok';
-    ok.textContent = 'No validation issues found.';
-    host.appendChild(ok);
+    if (showEmptyState) {
+      const ok = document.createElement('p');
+      ok.className = 'validation-ok';
+      ok.textContent = 'No validation issues found.';
+      host.appendChild(ok);
+    }
     return;
   }
 

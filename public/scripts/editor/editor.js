@@ -3,7 +3,7 @@ import { renderInspector } from './inspector.js';
 import { validateProject } from './validators.js';
 import { createScene, SceneType } from '../model.js';
 
-export function renderEditor(store, leftEl, rightEl, setStatus) {
+export function renderEditor(store, leftEl, rightEl, showMessage) {
   leftEl.innerHTML = '';
   rightEl.innerHTML = '';
 
@@ -15,10 +15,8 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
   rightEl.appendChild(inspectorHost);
 
   let selectedId = store.get().project.scenes[0]?.id ?? null;
-  let validationResults = null;
 
   const unsubscribe = store.subscribe(() => {
-    validationResults = null;
     syncSelection();
     update();
   });
@@ -43,11 +41,13 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
   function cloneScene(scene) {
     return {
       ...scene,
+      backgroundAudio: scene.backgroundAudio ? { ...scene.backgroundAudio } : null,
       dialogue: scene.dialogue.map(line => ({
         text: line.text,
         audio: line.audio ? { ...line.audio } : null,
       })),
       choices: scene.choices.map(choice => ({ ...choice })),
+      autoNextSceneId: scene.autoNextSceneId ?? null,
     };
   }
 
@@ -75,15 +75,18 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
 
     renderGraph(graphHost, project, selectedId, (id) => {
       selectedId = id;
-      validationResults = null;
       update();
     });
 
+    const validationResults = validateProject(project);
+
     renderInspector(inspectorHost, project, scene, {
+      onUpdateProjectTitle: updateProjectTitle,
       onAddScene: addScene,
       onDeleteScene: deleteScene,
       onSetSceneType: setSceneType,
       onSetSceneImage: setSceneImage,
+      onSetSceneBackgroundAudio: setSceneBackgroundAudio,
       onAddDialogue: addDialogue,
       onRemoveDialogue: removeDialogue,
       onUpdateDialogueText: updateDialogueText,
@@ -91,7 +94,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       onAddChoice: addChoice,
       onRemoveChoice: removeChoice,
       onUpdateChoice: updateChoice,
-      onValidate: runValidation,
+      onSetAutoNext: setAutoNext,
       canDeleteScene,
       validationResults,
     });
@@ -115,10 +118,21 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
     }
   }
 
+  function updateProjectTitle(title) {
+    const value = typeof title === 'string' ? title : '';
+    mutateProject(prev => ({
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        title: value,
+      },
+    }));
+  }
+
   function addScene() {
     const { project } = store.get();
     if (project.scenes.length >= 20) {
-      setStatus('Scene limit reached (20).');
+      showMessage('Scene limit reached (20).');
       return;
     }
     const newScene = createScene();
@@ -127,8 +141,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       scenes: [...prev.scenes, newScene],
     }));
     selectedId = newScene.id;
-    validationResults = null;
-    setStatus(`Added scene ${newScene.id}.`);
+    showMessage(`Added scene ${newScene.id}.`);
   }
 
   function deleteScene(sceneId) {
@@ -137,11 +150,14 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
     if (!scene) return;
     const startScenes = project.scenes.filter(s => s.type === SceneType.START);
     if (scene.type === SceneType.START && startScenes.length <= 1) {
-      setStatus('Cannot delete the only Start scene.');
+      showMessage('Cannot delete the only Start scene.');
       return;
     }
     if (scene.image?.objectUrl) {
       URL.revokeObjectURL(scene.image.objectUrl);
+    }
+    if (scene.backgroundAudio?.objectUrl) {
+      URL.revokeObjectURL(scene.backgroundAudio.objectUrl);
     }
     scene.dialogue.forEach(line => {
       if (line.audio?.objectUrl) {
@@ -155,6 +171,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
         choices: s.choices.map(choice => (
           choice.nextSceneId === sceneId ? { ...choice, nextSceneId: null } : choice
         )),
+        autoNextSceneId: s.autoNextSceneId === sceneId ? null : s.autoNextSceneId ?? null,
       }));
       return {
         ...prev,
@@ -163,8 +180,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
     });
     const nextProject = store.get().project;
     selectedId = nextProject.scenes[0]?.id ?? null;
-    validationResults = null;
-    setStatus(`Deleted scene ${sceneId}.`);
+    showMessage(`Deleted scene ${sceneId}.`);
   }
 
   function setSceneType(sceneId, type) {
@@ -175,6 +191,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
           draft.type = type;
           if (type === SceneType.END) {
             draft.choices = [];
+            draft.autoNextSceneId = null;
           }
           return draft;
         }
@@ -185,8 +202,7 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
-    setStatus(`Scene ${sceneId} set to ${type}.`);
+    showMessage(`Scene ${sceneId} set to ${type}.`);
   }
 
   function setSceneImage(sceneId, file) {
@@ -203,14 +219,40 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
           draft.image = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
-    setStatus(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
+    showMessage(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
+  }
+
+  function setSceneBackgroundAudio(sceneId, file) {
+    mutateProject(prev => {
+      const scenes = prev.scenes.map(scene => {
+        if (scene.id !== sceneId) return scene;
+        const draft = cloneScene(scene);
+        if (draft.backgroundAudio?.objectUrl) {
+          URL.revokeObjectURL(draft.backgroundAudio.objectUrl);
+        }
+        if (!file) {
+          draft.backgroundAudio = null;
+        } else {
+          draft.backgroundAudio = {
+            name: file.name,
+            objectUrl: URL.createObjectURL(file),
+            blob: file,
+          };
+        }
+        return draft;
+      });
+      return { ...prev, scenes };
+    });
+    showMessage(file
+      ? `Updated background audio for ${sceneId}.`
+      : `Removed background audio for ${sceneId}.`);
   }
 
   function addDialogue(sceneId) {
@@ -224,7 +266,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function removeDialogue(sceneId, index) {
@@ -241,7 +282,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function updateDialogueText(sceneId, index, text) {
@@ -255,7 +295,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function setDialogueAudio(sceneId, index, file) {
@@ -273,13 +312,13 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
           draft.dialogue[index].audio = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function addChoice(sceneId, choice) {
@@ -289,11 +328,11 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
         if (scene.choices.length >= 3) return scene;
         const draft = cloneScene(scene);
         draft.choices = [...draft.choices, choice];
+        draft.autoNextSceneId = null;
         return draft;
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function removeChoice(sceneId, index) {
@@ -306,7 +345,6 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
   function updateChoice(sceneId, index, updates) {
@@ -320,14 +358,18 @@ export function renderEditor(store, leftEl, rightEl, setStatus) {
       });
       return { ...prev, scenes };
     });
-    validationResults = null;
   }
 
-  function runValidation() {
-    const result = validateProject(store.get().project);
-    validationResults = result;
-    setStatus(result.errors.length ? 'Validation failed.' : 'Validation passed.');
-    return result;
+  function setAutoNext(sceneId, nextSceneId) {
+    mutateProject(prev => {
+      const scenes = prev.scenes.map(scene => {
+        if (scene.id !== sceneId) return scene;
+        const draft = cloneScene(scene);
+        draft.autoNextSceneId = draft.type === SceneType.END ? null : (nextSceneId ?? null);
+        return draft;
+      });
+      return { ...prev, scenes };
+    });
   }
 
   syncSelection();

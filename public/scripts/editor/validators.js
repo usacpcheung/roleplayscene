@@ -17,7 +17,9 @@ export function validateProject(project) {
   }
 
   const endScenes = scenes.filter(scene => scene.type === SceneType.END);
-  if (endScenes.length > 3) {
+  if (endScenes.length < 1) {
+    errors.push('Project must have at least 1 end scene.');
+  } else if (endScenes.length > 3) {
     errors.push(`Project can have at most 3 end scenes (found ${endScenes.length}).`);
   }
 
@@ -26,12 +28,12 @@ export function validateProject(project) {
   }
 
   for (const scene of scenes) {
-    if (!Array.isArray(scene.choices)) continue;
-    if (scene.choices.length > 3) {
-      errors.push(`Scene "${scene.id}" has ${scene.choices.length} choices; maximum is 3.`);
+    const sceneChoices = Array.isArray(scene.choices) ? scene.choices : [];
+    if (sceneChoices.length > 3) {
+      errors.push(`Scene "${scene.id}" has ${sceneChoices.length} choices; maximum is 3.`);
     }
 
-    scene.choices.forEach((choice, idx) => {
+    sceneChoices.forEach((choice, idx) => {
       if (!choice.nextSceneId) {
         errors.push(`Choice ${idx + 1} in scene "${scene.id}" is missing a destination.`);
         return;
@@ -41,7 +43,19 @@ export function validateProject(project) {
       }
     });
 
-    if (scene.type === SceneType.END && scene.choices.length > 0) {
+    const autoNext = scene.autoNextSceneId ?? null;
+    if (autoNext) {
+      if (scene.type === SceneType.END) {
+        errors.push(`End scene "${scene.id}" cannot auto-advance to "${autoNext}".`);
+      } else if (sceneChoices.length > 0) {
+        errors.push(`Scene "${scene.id}" cannot have both choices and an auto-advance destination.`);
+      }
+      if (!sceneIds.has(autoNext)) {
+        errors.push(`Scene "${scene.id}" auto-advances to missing scene "${autoNext}".`);
+      }
+    }
+
+    if (scene.type === SceneType.END && sceneChoices.length > 0) {
       warnings.push(`End scene "${scene.id}" should not have outgoing choices.`);
     }
   }
@@ -59,6 +73,9 @@ export function validateProject(project) {
         if (choice.nextSceneId && sceneIds.has(choice.nextSceneId)) {
           queue.push(choice.nextSceneId);
         }
+      }
+      if (scene.autoNextSceneId && sceneIds.has(scene.autoNextSceneId)) {
+        queue.push(scene.autoNextSceneId);
       }
     }
 
