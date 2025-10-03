@@ -4,6 +4,21 @@ export function renderInspector(hostEl, project, scene, actions) {
   hostEl.innerHTML = '';
   hostEl.classList.add('inspector');
 
+  const projectTitleField = document.createElement('label');
+  projectTitleField.className = 'field';
+  projectTitleField.innerHTML = '<span>Project title</span>';
+  const projectTitleInput = document.createElement('input');
+  projectTitleInput.type = 'text';
+  projectTitleInput.value = project.meta?.title ?? '';
+  projectTitleInput.placeholder = 'Untitled Role Play';
+  projectTitleInput.maxLength = 120;
+  projectTitleInput.dataset.focusKey = 'project-title';
+  projectTitleInput.addEventListener('input', () => {
+    actions.onUpdateProjectTitle?.(projectTitleInput.value);
+  });
+  projectTitleField.appendChild(projectTitleInput);
+  hostEl.appendChild(projectTitleField);
+
   if (!scene) {
     const empty = document.createElement('p');
     empty.textContent = 'No scenes yet. Use “Add Scene” to begin.';

@@ -19,6 +19,8 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   let historyIndex = -1;
   let backgroundVolume = 0.4;
   let backgroundMuted = false;
+  let defaultBackgroundSource = null;
+  let activeDialogueCleanup = null;
   const backgroundTrack = createBackgroundAudioController({ defaultVolume: backgroundVolume });
   backgroundTrack.setVolume(backgroundVolume);
 
@@ -44,7 +46,16 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     renderCurrentScene();
   });
 
+  function stopActiveDialogue() {
+    if (activeDialogueCleanup) {
+      const cleanupFn = activeDialogueCleanup;
+      activeDialogueCleanup = null;
+      cleanupFn();
+    }
+  }
+
   function cleanup() {
+    stopActiveDialogue();
     unsubscribe();
     backgroundTrack.teardown();
   }
@@ -53,9 +64,33 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     return project.scenes.find(scene => scene.type === SceneType.START) ?? project.scenes[0] ?? null;
   }
 
-  function renderIntro() {
-    const { project } = store.get();
+  function findSceneById(project, sceneId) {
+    if (!sceneId) {
+      return null;
+    }
+    return project.scenes.find(scene => scene.id === sceneId) ?? null;
+  }
+
+  function getEffectiveBackgroundSource(scene) {
+    if (!scene) {
+      return null;
+    }
+    return scene.backgroundAudio?.objectUrl ?? defaultBackgroundSource ?? null;
+  }
+
+  function maybeStopBeforeScene(nextScene) {
+    const currentSource = backgroundTrack.getCurrentSource();
+    const nextSource = getEffectiveBackgroundSource(nextScene);
+    if (currentSource && nextSource && currentSource === nextSource) {
+      return;
+    }
     backgroundTrack.stop();
+  }
+
+  function renderIntro() {
+    stopActiveDialogue();
+    const { project } = store.get();
+    maybeStopBeforeScene(null);
     resetHistory();
     stage.innerHTML = '';
     const introStage = document.createElement('div');
@@ -81,6 +116,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
   }
 
   function renderCurrentScene() {
+    stopActiveDialogue();
     const { project } = store.get();
     syncHistoryWithProject(project);
 
@@ -89,9 +125,9 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
       return;
     }
 
-    const scene = project.scenes.find(s => s.id === currentSceneId);
+    const scene = findSceneById(project, currentSceneId);
     if (!scene) {
-      backgroundTrack.stop();
+      maybeStopBeforeScene(null);
       showMessage('Scene missing.');
       renderIntro();
       return;
@@ -99,13 +135,15 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
 
     syncBackgroundAudio(scene);
 
-    renderPlayerUI({
+    const dialogueCleanup = renderPlayerUI({
       stageEl: stage,
       uiEl: uiPanel,
       project,
       scene,
       onChoice: (nextId) => {
-        backgroundTrack.stop();
+        stopActiveDialogue();
+        const nextScene = findSceneById(project, nextId);
+        maybeStopBeforeScene(nextScene);
         pushSceneToHistory(nextId);
         renderCurrentScene();
       },
@@ -126,14 +164,16 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
         : null,
       historyControls: createHistoryControls(project),
     });
+
+    activeDialogueCleanup = typeof dialogueCleanup === 'function' ? dialogueCleanup : null;
   }
 
   function syncBackgroundAudio(scene) {
-    if (!scene || !store.get().audioGate) {
+    if (!store.get().audioGate) {
       backgroundTrack.stop();
       return;
     }
-    const source = scene.backgroundAudio?.objectUrl ?? null;
+    const source = getEffectiveBackgroundSource(scene);
     if (!source) {
       backgroundTrack.stop();
       return;
@@ -145,7 +185,11 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
 
   function beginRunAt(sceneId) {
     if (!sceneId) return;
-    backgroundTrack.stop();
+    const { project } = store.get();
+    const startScene = findStartScene(project);
+    defaultBackgroundSource = startScene?.backgroundAudio?.objectUrl ?? null;
+    const nextScene = findSceneById(project, sceneId);
+    maybeStopBeforeScene(nextScene);
     sceneHistory = [sceneId];
     historyIndex = 0;
     currentSceneId = sceneId;
@@ -156,6 +200,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     sceneHistory = [];
     historyIndex = -1;
     currentSceneId = null;
+    defaultBackgroundSource = null;
   }
 
   function pushSceneToHistory(sceneId) {
@@ -200,9 +245,13 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     if (index < 0 || index >= sceneHistory.length) {
       return;
     }
+    stopActiveDialogue();
+    const { project } = store.get();
+    const nextSceneId = sceneHistory[index];
+    const nextScene = findSceneById(project, nextSceneId);
+    maybeStopBeforeScene(nextScene);
     historyIndex = index;
-    currentSceneId = sceneHistory[index];
-    backgroundTrack.stop();
+    currentSceneId = nextSceneId;
     renderCurrentScene();
   }
 
