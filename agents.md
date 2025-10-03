@@ -1,10 +1,10 @@
 # Agents Guide (for AI code assistants)
 
-**Goal**: Maintain and extend a client-side branching story builder. Keep dependencies minimal, preserve portability (static hosting), and enforce constraints (1 Start, ≤3 Endings, ≤20 scenes).
+**Goal**: Maintain and extend a client-side branching story builder. Keep dependencies minimal, preserve portability (static hosting), and enforce constraints (1 Start, ≤3 Endings, ≤20 scenes). Autosave currently relies on IndexedDB; always preserve graceful degradation when touching persistence flows.
 
 ## Project boundaries & principles
 1. **Client-only**: Do not add back-end services. All features must work on static hosting.
-2. **Storage**: Use IndexedDB (via `storage.js`) for blobs and state; support JSON/ZIP export/import.
+2. **Storage**: Use IndexedDB (via `storage.js`) for blobs and state; support JSON export/import. Do not add ZIP handling unless explicitly requested.
 3. **Audio**: Respect browser autoplay policies. Always gate audio behind an explicit user gesture.
 4. **Graph integrity**: Editors must prevent/flag invalid links; player must never crash on malformed data.
 5. **Perf**: Target ≤20 scenes; prefer simple algorithms, avoid heavy libraries.
@@ -14,7 +14,7 @@
 - `scripts/main.js`: app bootstrap, route/edit/play mode switching, global events.
 - `scripts/state.js`: central store (immutable-ish updates), event pub/sub.
 - `scripts/model.js`: schema, factories, migration, serialization.
-- `scripts/storage.js`: IndexedDB helpers; import/export (JSON & ZIP if enabled).
+- `scripts/storage.js`: IndexedDB helpers; import/export (JSON).
 - `scripts/editor/editor.js`: edit mode controller, toolbar actions.
 - `scripts/editor/graph.js`: render nodes/edges; pan/zoom; selection; edge creation.
 - `scripts/editor/inspector.js`: scene form (uploads, dialogue, choices).
@@ -25,7 +25,17 @@
 - `scripts/utils/*`: helpers only.
 
 ## Coding standards
-ES modules; kebab-case filenames; JSDoc comments; minimal deps; UI strings via a simple i18n map.
+ES modules; kebab-case filenames; JSDoc comments; minimal deps; UI strings via a simple i18n map. Keep README.md and this guide in sync with implemented features when behaviour changes.
+
+## Persistence specifics
+- Autosave must hydrate existing snapshots on load, debounce writes, and surface a clear banner/message if persistence is disabled.
+- Always revoke prior `objectUrl`s before replacing them to avoid leaks.
+- Serialized snapshots should store `Blob`s (or `File`s) rather than transient URLs; hydration must recreate fresh `objectUrl`s.
+- Import/export should reseed IndexedDB so manual imports overwrite stale autosave state.
+
+## Testing expectations
+- Run `for f in tests/*.test.mjs; do echo "Running $f"; node "$f"; done` after changes affecting logic.
+- Add or update unit tests alongside serialization, model, or validation changes. Tests stub browser APIs where possible—avoid heavy tooling.
 
 ## Validation constraints
 - Exactly one Start scene.

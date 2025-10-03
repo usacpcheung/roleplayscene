@@ -12,13 +12,21 @@
     <nav class="toolbar">
       <button id="mode-edit" class="active">Edit</button>
       <button id="mode-play">Play</button>
-      <button id="import-btn" title="Import project JSON">Import</button>
-      <button id="export-btn" title="Export project JSON">Export</button>
+      <button id="import-btn" title="Import project (.json or .zip)">Import</button>
+      <button id="export-btn" title="Export project archive (.zip)">Export</button>
       <label class="file-input">
-        <input type="file" id="file-input" accept=".json" hidden />
+        <input type="file" id="file-input" accept=".json,.zip" hidden />
       </label>
     </nav>
   </header>
+
+  <div id="app-messages" class="app-messages" aria-live="polite" role="status" hidden>
+    <div class="app-messages__content">
+      <span class="app-messages__text"></span>
+      <div class="app-messages__details validation-results" hidden></div>
+    </div>
+    <button type="button" class="app-messages__dismiss" aria-label="Dismiss message">&times;</button>
+  </div>
 
   <main id="app" class="layout">
     <section id="left-pane" class="pane">
@@ -28,10 +36,6 @@
       <!-- Inspector or Dialogue panel will render here -->
     </section>
   </main>
-
-  <footer class="statusbar">
-    <span id="status">Ready.</span>
-  </footer>
 
   <script type="module" src="./scripts/main.js"></script>
 </body>
