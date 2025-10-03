@@ -163,10 +163,10 @@ button:disabled {
 .player-history-entry:disabled { cursor: default; opacity: 0.85; }
 .player-history-entry[aria-current] { background: var(--color-accent); border-color: var(--color-accent); color: #fff; cursor: default; box-shadow: var(--shadow-subtle); }
 .player-dialogue { display: grid; gap: var(--space-sm); padding: var(--space-md); background: var(--color-surface); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); box-shadow: var(--shadow-subtle); }
-.player-dialogue-line { display: flex; justify-content: flex-start; padding-bottom: var(--space-xs); }
+.player-dialogue-line { display: flex; justify-content: flex-start; padding-bottom: var(--space-xs); width: 100%; }
 .player-dialogue-bubble {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
   gap: var(--space-sm);
@@ -176,6 +176,7 @@ button:disabled {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-subtle);
   max-width: 100%;
+  width: 100%;
 }
 .player-dialogue-bubble::after {
   content: '';
