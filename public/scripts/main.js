@@ -5,6 +5,7 @@ import { importProject, exportProject, setupPersistence } from './storage.js';
 import { validateProject } from './editor/validators.js';
 import { renderValidation } from './editor/inspector.js';
 
+const appRoot = document.getElementById('app');
 const elLeft = document.getElementById('left-pane');
 const elRight = document.getElementById('right-pane');
 const messageHost = document.getElementById('app-messages');
@@ -32,6 +33,10 @@ function setMode(next) {
   mode = next;
   btnEdit.classList.toggle('active', mode === 'edit');
   btnPlay.classList.toggle('active', mode === 'play');
+  if (appRoot) {
+    appRoot.classList.toggle('layout--edit', mode === 'edit');
+    appRoot.classList.toggle('layout--play', mode === 'play');
+  }
   if (mode === 'edit') {
     teardown = renderEditor(store, elLeft, elRight, showMessage);
   } else {

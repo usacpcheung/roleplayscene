@@ -98,6 +98,7 @@ button:disabled {
 .app-messages__dismiss { border: none; background: transparent; font-size: 1.25rem; line-height: 1; cursor: pointer; color: inherit; padding: var(--space-2xs); border-radius: var(--radius-xs); transition: background-color 0.2s ease; }
 .app-messages__dismiss:hover { background: rgba(15, 23, 42, 0.08); }
 .layout { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 0; }
+.layout.layout--edit { grid-template-columns: minmax(0, 0.65fr) minmax(0, 0.35fr); }
 .pane { border-right: 1px solid var(--color-border-subtle); padding: var(--space-md); overflow: auto; background: var(--color-surface); }
 .pane:last-child { border-right: none; }
 .placeholder { border: 2px dashed var(--color-border); border-radius: var(--radius-md); padding: var(--space-lg); text-align: center; color: var(--color-text-muted); background: var(--color-surface); box-shadow: var(--shadow-subtle); }
@@ -183,4 +184,5 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   .layout { grid-template-columns: 1fr; }
   .pane { border-right: none; border-bottom: 1px solid var(--color-border-subtle); }
   .pane:last-child { border-bottom: none; }
+  .layout.layout--edit { grid-template-columns: 1fr; }
 }
