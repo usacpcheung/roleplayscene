@@ -241,11 +241,31 @@ export function renderPlayerUI({
   const lineButtons = new Map();
   let activeLineIndex = null;
 
-  const setLineButtonState = (index, active) => {
-    const button = lineButtons.get(index);
-    if (!button) {
+  const setBubblePlayingState = (bubble, active) => {
+    if (bubble.classList?.toggle) {
+      bubble.classList.toggle('is-playing', active);
       return;
     }
+
+    if (typeof bubble.className === 'string') {
+      const current = bubble.className.split(/\s+/).filter(Boolean);
+      const classes = new Set(current);
+      if (active) {
+        classes.add('is-playing');
+      } else {
+        classes.delete('is-playing');
+      }
+      bubble.className = Array.from(classes).join(' ');
+    }
+  };
+
+  const setLineButtonState = (index, active) => {
+    const entry = lineButtons.get(index);
+    if (!entry) {
+      return;
+    }
+
+    const { button, bubble } = entry;
 
     if (active) {
       if (activeLineIndex !== null && activeLineIndex !== index) {
@@ -254,19 +274,24 @@ export function renderPlayerUI({
       activeLineIndex = index;
       button.textContent = '⏹ Stop line';
       button.setAttribute('aria-pressed', 'true');
+      setBubblePlayingState(bubble, true);
     } else {
       if (activeLineIndex === index) {
         activeLineIndex = null;
       }
       button.textContent = '▶️ Play line';
       button.setAttribute('aria-pressed', 'false');
+      setBubblePlayingState(bubble, false);
     }
   };
 
   const resetAllLines = () => {
-    if (activeLineIndex !== null) {
-      setLineButtonState(activeLineIndex, false);
-    }
+    activeLineIndex = null;
+    lineButtons.forEach(({ button, bubble }) => {
+      button.textContent = '▶️ Play line';
+      button.setAttribute('aria-pressed', 'false');
+      setBubblePlayingState(bubble, false);
+    });
   };
 
   if (!scene) {
@@ -395,7 +420,13 @@ export function renderPlayerUI({
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'player-history-entry';
-      button.textContent = entry.label || entry.sceneId;
+      const displayLabel = entry.label ?? entry.fullLabel ?? entry.sceneId;
+      const accessibleLabel = entry.fullLabel ?? entry.label ?? entry.sceneId;
+      button.textContent = displayLabel || '';
+      if (accessibleLabel) {
+        button.setAttribute('title', accessibleLabel);
+        button.setAttribute('aria-label', accessibleLabel);
+      }
       if (button.dataset) {
         button.dataset.sceneId = entry.sceneId;
       }
@@ -491,18 +522,22 @@ export function renderPlayerUI({
     const lineContainer = document.createElement('div');
     lineContainer.className = 'player-dialogue-line';
 
+    const bubble = document.createElement('div');
+    bubble.className = 'player-dialogue-bubble';
+    lineContainer.appendChild(bubble);
+
     const text = document.createElement('p');
     text.textContent = line.text || `(Line ${index + 1})`;
-    lineContainer.appendChild(text);
+    bubble.appendChild(text);
 
     if (line.audio?.objectUrl) {
       const playButton = document.createElement('button');
       playButton.type = 'button';
-      playButton.className = 'audio-play';
+      playButton.className = 'dialogue-bubble-play';
       playButton.textContent = '▶️ Play line';
       playButton.setAttribute('aria-pressed', 'false');
 
-      lineButtons.set(index, playButton);
+      lineButtons.set(index, { button: playButton, bubble });
 
       playButton.addEventListener('click', () => {
         const wasActive = activeLineIndex === index;
@@ -527,7 +562,7 @@ export function renderPlayerUI({
           },
         });
       });
-      lineContainer.appendChild(playButton);
+      bubble.appendChild(playButton);
     }
 
     dialogueBox.appendChild(lineContainer);
