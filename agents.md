@@ -1,64 +1,54 @@
 # Agents Guide (for AI code assistants)
 
-**Goal**: Maintain and extend a client-side branching story builder. Keep dependencies minimal, preserve portability (static hosting), and enforce constraints (1 Start, ≤3 Endings, ≤20 scenes). Autosave currently relies on IndexedDB; always preserve graceful degradation when touching persistence flows.
+**Mission**: Maintain and extend the client-side branching story builder. Keep the app deployable as plain static assets, preserve author/editor ergonomics, and respect tight constraints: 1 Start scene, ≤3 End scenes, ≤20 total scenes, choices ≤3, dialogue lines ≤2. Autosave, import/export, and playback must continue to function even when browsers restrict features.
 
-## Project boundaries & principles
-1. **Client-only**: Do not add back-end services. All features must work on static hosting.
-2. **Storage**: Use IndexedDB (via `storage.js`) for blobs and state; support JSON export/import. Do not add ZIP handling unless explicitly requested.
-3. **Audio**: Respect browser autoplay policies. Always gate audio behind an explicit user gesture.
-4. **Graph integrity**: Editors must prevent/flag invalid links; player must never crash on malformed data.
-5. **Perf**: Target ≤20 scenes; prefer simple algorithms, avoid heavy libraries.
-6. **A11y**: Don’t regress keyboard navigation or focus visibility. Maintain text captions for all audio.
+## Core guardrails
+1. **Client-only** – Never add backend dependencies or non-static hosting requirements. All features must run from `/public` using vanilla ES modules.
+2. **Storage** – Use IndexedDB (via `storage.js`) for autosave. Manual import/export already supports JSON and ZIP (`project.json` + binaries using fflate); keep parity between formats when evolving the schema.
+3. **Media handling** – Images/audio are stored as blobs with regenerated `objectURL`s. Revoke/recreate URLs when replacing assets to avoid leaks.
+4. **Graph integrity** – Editors must prevent or surface invalid links. Player mode must degrade gracefully (showing warnings instead of crashing) when encountering malformed data.
+5. **Performance** – Optimise for ≤20 scenes with ~10 MB of media. Avoid heavyweight dependencies or expensive layout algorithms.
+6. **Accessibility** – Preserve keyboard navigation, focus visibility, semantic labels, and captioned dialogue. Any new controls require accessible names/states.
+7. **Audio policy** – All playback follows a user gesture gate (`audioGate`). Handle `play()` rejections, provide mute/volume controls, and keep captions in sync.
+8. **Documentation** – Keep `README.md` and this guide aligned with implemented behaviour whenever features change.
 
-## File map & responsibilities
-- `scripts/main.js`: app bootstrap, route/edit/play mode switching, global events.
-- `scripts/state.js`: central store (immutable-ish updates), event pub/sub.
-- `scripts/model.js`: schema, factories, migration, serialization.
-- `scripts/storage.js`: IndexedDB helpers; import/export (JSON).
-- `scripts/editor/editor.js`: edit mode controller, toolbar actions.
-- `scripts/editor/graph.js`: render nodes/edges; pan/zoom; selection; edge creation.
-- `scripts/editor/inspector.js`: scene form (uploads, dialogue, choices).
-- `scripts/editor/validators.js`: structural rules & reachability.
-- `scripts/player/player.js`: runtime state machine.
-- `scripts/player/audio.js`: preloading, play/stop, global mute; autoplay gate.
-- `scripts/player/ui.js`: stage + dialogue and choices rendering.
-- `scripts/utils/*`: helpers only.
+## Module responsibilities
+- `scripts/main.js` – App bootstrap, mode switching, global messaging.
+- `scripts/state.js` – Store implementation (immutable-style updates + subscriptions).
+- `scripts/model.js` – Schema, factories, migrations, and validation helpers.
+- `scripts/storage.js` – IndexedDB autosave, archive import/export, manifest assembly.
+- `scripts/editor/*` – Graph layout/rendering, inspector form, toolbar actions, validation UI.
+- `scripts/player/*` – Runtime state machine, dialogue sequencing, background audio mixer, UI composition.
+- `scripts/utils/*` – Small helpers (DOM, IDs, ZIP promise wrappers).
+- `scripts/vendor/fflate.module.js` – Third-party compression library; do not replace unless necessary for compatibility.
 
-## Coding standards
-ES modules; kebab-case filenames; JSDoc comments; minimal deps; UI strings via a simple i18n map. Keep README.md and this guide in sync with implemented features when behaviour changes.
+## Persistence expectations
+- Autosave hydrates any stored snapshot during bootstrap, debounces writes, and surfaces clear messages when persistence is disabled or fails mid-session.
+- Import/export must reseed IndexedDB so manual actions keep autosave in sync with the downloaded/uploaded snapshot.
+- Serialized snapshots store `Blob` metadata; hydration must create fresh `objectURL`s for restored assets.
 
-## Persistence specifics
-- Autosave must hydrate existing snapshots on load, debounce writes, and surface a clear banner/message if persistence is disabled.
-- Always revoke prior `objectUrl`s before replacing them to avoid leaks.
-- Serialized snapshots should store `Blob`s (or `File`s) rather than transient URLs; hydration must recreate fresh `objectUrl`s.
-- Import/export should reseed IndexedDB so manual imports overwrite stale autosave state.
+## Validation & gameplay rules
+- Exactly 1 Start scene; 0–3 End scenes; 1–20 total scenes.
+- Choices: 0–3 per scene. Each `nextSceneId` must exist.
+- Auto-advance targets only when no choices are present and never from End scenes.
+- Reachability: warn for scenes unreachable from Start.
+- End scenes cannot offer playable choices.
+- Player history/navigation must remain consistent after edits, imports, or auto-advance transitions.
 
-## Testing expectations
-- Run `for f in tests/*.test.mjs; do echo "Running $f"; node "$f"; done` after changes affecting logic.
-- Add or update unit tests alongside serialization, model, or validation changes. Tests stub browser APIs where possible—avoid heavy tooling.
+## Testing
+- Run `for f in tests/*.test.mjs; do echo "Running $f"; node "$f"; done` when touching logic.
+- Update or add tests for serialization, validation, graph layout, audio gating, or player history changes.
 
-## Validation constraints
-- Exactly one Start scene.
-- 0–3 End scenes.
-- Max 20 scenes.
-- Choices: 0–3 per scene; `nextSceneId` must exist.
-- Reachability: warn for any scene not reachable from Start.
-- End scenes have zero outgoing choices.
+## Acceptance checklist for feature work
+- Tests updated/added and passing.
+- A11y preserved (keyboard + focus indicators).
+- No regressions in autosave/import/export flows.
+- No network calls or backend dependencies introduced.
+- Performance remains smooth on the 20-scene benchmark project (~10 MB media).
 
-## Acceptance criteria (per feature)
-- Tests updated/added.
-- A11y intact (keyboard + focus).
-- No perf regression on a 20-scene project with ~10MB media.
-- State persists; import/export round-trip works.
-- No network calls.
-
-## Audio policy checklist
-User gesture before first `play()`; handle promise rejections; provide Mute and Replay.
-
-## Starter backlog
-1. Scaffold `index.html`, base layout (Edit/Play toggle).
-2. State & model: schema + validators + unit tests.
-3. Editor MVP: graph (MVP), inspector form, choice linking, validation UI.
-4. Player MVP: scene renderer, dialogue sequencer, choices, audio gate.
-5. Storage MVP: IndexedDB; JSON export/import.
-6. Tests: validators, transitions, import/export round-trip.
+## Known follow-up initiatives
+1. Editor UX polish (drag-to-reposition nodes, inline scene notes, keyboard shortcuts).
+2. Undo/redo support in the store and UI.
+3. Optional single-file HTML export in addition to ZIP.
+4. Offline/PWA support while respecting storage budgets.
+5. Media management tooling (size warnings, relink helpers).
