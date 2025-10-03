@@ -10,7 +10,13 @@ export const SceneType = Object.freeze({
 function normaliseDialogueLine(line = {}) {
   return {
     text: line.text ?? '',
-    audio: line.audio ? { name: line.audio.name ?? '', objectUrl: line.audio.objectUrl ?? null } : null,
+    audio: line.audio
+      ? {
+        name: line.audio.name ?? '',
+        objectUrl: line.audio.objectUrl ?? null,
+        blob: line.audio.blob ?? null,
+      }
+      : null,
   };
 }
 
@@ -41,9 +47,19 @@ export function createScene(options = {}) {
   return {
     id,
     type,
-    image: image ? { name: image.name ?? '', objectUrl: image.objectUrl ?? null } : null,
+    image: image
+      ? {
+        name: image.name ?? '',
+        objectUrl: image.objectUrl ?? null,
+        blob: image.blob ?? null,
+      }
+      : null,
     backgroundAudio: backgroundAudio
-      ? { name: backgroundAudio.name ?? '', objectUrl: backgroundAudio.objectUrl ?? null }
+      ? {
+        name: backgroundAudio.name ?? '',
+        objectUrl: backgroundAudio.objectUrl ?? null,
+        blob: backgroundAudio.blob ?? null,
+      }
       : null,
     dialogue: normalisedDialogue,
     choices: choices.slice(0, 3).map(normaliseChoice),

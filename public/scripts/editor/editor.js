@@ -81,6 +81,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     const validationResults = validateProject(project);
 
     renderInspector(inspectorHost, project, scene, {
+      onUpdateProjectTitle: updateProjectTitle,
       onAddScene: addScene,
       onDeleteScene: deleteScene,
       onSetSceneType: setSceneType,
@@ -115,6 +116,17 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
         }
       }
     }
+  }
+
+  function updateProjectTitle(title) {
+    const value = typeof title === 'string' ? title : '';
+    mutateProject(prev => ({
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        title: value,
+      },
+    }));
   }
 
   function addScene() {
@@ -207,6 +219,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.image = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
@@ -230,6 +243,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.backgroundAudio = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;
@@ -298,6 +312,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
           draft.dialogue[index].audio = {
             name: file.name,
             objectUrl: URL.createObjectURL(file),
+            blob: file,
           };
         }
         return draft;

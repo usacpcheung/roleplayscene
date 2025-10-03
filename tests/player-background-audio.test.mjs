@@ -197,7 +197,43 @@ const project = {
       backgroundAudio: { name: 'Loop', objectUrl: 'bg-loop.ogg' },
       dialogue: [{ text: 'Welcome', audio: null }],
       choices: [
-        { id: 'choice-1', label: 'To End', nextSceneId: 'end-1' },
+        { id: 'choice-quiet', label: 'To Quiet', nextSceneId: 'quiet-1' },
+      ],
+      autoNextSceneId: null,
+      notes: '',
+    },
+    {
+      id: 'quiet-1',
+      type: SceneType.INTERMEDIATE,
+      image: null,
+      backgroundAudio: null,
+      dialogue: [{ text: 'So quiet here', audio: null }],
+      choices: [
+        { id: 'choice-override', label: 'To Override', nextSceneId: 'override-1' },
+      ],
+      autoNextSceneId: null,
+      notes: '',
+    },
+    {
+      id: 'override-1',
+      type: SceneType.INTERMEDIATE,
+      image: null,
+      backgroundAudio: { name: 'Dramatic', objectUrl: 'dramatic.ogg' },
+      dialogue: [{ text: 'Things escalate', audio: null }],
+      choices: [
+        { id: 'choice-back', label: 'Back to Quiet', nextSceneId: 'quiet-2' },
+      ],
+      autoNextSceneId: null,
+      notes: '',
+    },
+    {
+      id: 'quiet-2',
+      type: SceneType.INTERMEDIATE,
+      image: null,
+      backgroundAudio: null,
+      dialogue: [{ text: 'Peace returns', audio: null }],
+      choices: [
+        { id: 'choice-end', label: 'To End', nextSceneId: 'end-1' },
       ],
       autoNextSceneId: null,
       notes: '',
@@ -301,13 +337,82 @@ logResult('Mute button label resets after unmute', Boolean(muteButton));
 const sliderAfterUnmute = findElement(uiHost, el => el.tagName === 'input' && el.type === 'range');
 logResult('Volume slider enabled after unmute', Boolean(sliderAfterUnmute) && !sliderAfterUnmute.disabled);
 
-const choiceButton = findByText(uiHost, 'To End');
-logResult('Choice button renders', Boolean(choiceButton));
-if (choiceButton) {
-  choiceButton.dispatchEvent('click');
+const pauseCountBeforeQuiet = FakeAudio.pauseCalls.length;
+const instanceCountBeforeQuiet = FakeAudio.instances.length;
+const quietChoice = findByText(uiHost, 'To Quiet');
+logResult('To Quiet choice renders', Boolean(quietChoice));
+if (quietChoice) {
+  quietChoice.dispatchEvent('click');
 }
 
-logResult('Background track stops when leaving scene', FakeAudio.pauseCalls.filter(src => src === 'bg-loop.ogg').length >= 2);
-logResult('Background track paused state after stop', resumedInstance?.paused === true);
+logResult('Background loop continues into silent scene', FakeAudio.pauseCalls.length === pauseCountBeforeQuiet);
+logResult(
+  'Silent scene reuses default background instance',
+  FakeAudio.instances.length === instanceCountBeforeQuiet && FakeAudio.instances[FakeAudio.instances.length - 1] === resumedInstance,
+);
+logResult('Background loop still playing during silent scene', resumedInstance?.paused === false);
 
+const playCountBeforeOverride = FakeAudio.playCalls.length;
+const pauseCountBeforeOverride = FakeAudio.pauseCalls.length;
+const overrideChoice = findByText(uiHost, 'To Override');
+logResult('To Override choice renders', Boolean(overrideChoice));
+if (overrideChoice) {
+  overrideChoice.dispatchEvent('click');
+}
+
+const overrideInstance = FakeAudio.instances[FakeAudio.instances.length - 1] ?? null;
+logResult(
+  'Override pauses default loop',
+  FakeAudio.pauseCalls.length === pauseCountBeforeOverride + 1
+    && FakeAudio.pauseCalls[FakeAudio.pauseCalls.length - 1] === 'bg-loop.ogg',
+);
+logResult(
+  'Override track starts playback',
+  FakeAudio.playCalls.length === playCountBeforeOverride + 1
+    && FakeAudio.playCalls[FakeAudio.playCalls.length - 1] === 'dramatic.ogg',
+);
+logResult('Override track active', overrideInstance?.src === 'dramatic.ogg' && overrideInstance?.paused === false);
+
+const playCountBeforeReturn = FakeAudio.playCalls.length;
+const pauseCountBeforeReturn = FakeAudio.pauseCalls.length;
+const returnChoice = findByText(uiHost, 'Back to Quiet');
+logResult('Back to Quiet choice renders', Boolean(returnChoice));
+if (returnChoice) {
+  returnChoice.dispatchEvent('click');
+}
+
+const fallbackResumeInstance = FakeAudio.instances[FakeAudio.instances.length - 1] ?? null;
+logResult(
+  'Override track stops when leaving override scene',
+  FakeAudio.pauseCalls.length === pauseCountBeforeReturn + 1
+    && FakeAudio.pauseCalls[FakeAudio.pauseCalls.length - 1] === 'dramatic.ogg',
+);
+logResult(
+  'Fallback resumes after override scene',
+  FakeAudio.playCalls.length === playCountBeforeReturn + 1
+    && FakeAudio.playCalls[FakeAudio.playCalls.length - 1] === 'bg-loop.ogg',
+);
+logResult('Fallback playing after override', fallbackResumeInstance?.src === 'bg-loop.ogg' && fallbackResumeInstance?.paused === false);
+
+const pauseCountBeforeEnd = FakeAudio.pauseCalls.length;
+const instanceCountBeforeEnd = FakeAudio.instances.length;
+const endChoice = findByText(uiHost, 'To End');
+logResult('To End choice renders', Boolean(endChoice));
+if (endChoice) {
+  endChoice.dispatchEvent('click');
+}
+
+logResult('Fallback persists on End scene', FakeAudio.pauseCalls.length === pauseCountBeforeEnd);
+logResult(
+  'End scene keeps current background instance',
+  FakeAudio.instances.length === instanceCountBeforeEnd
+    && FakeAudio.instances[FakeAudio.instances.length - 1]?.src === 'bg-loop.ogg',
+);
+
+const pauseCountBeforeCleanup = FakeAudio.pauseCalls.length;
 cleanup();
+logResult(
+  'Cleanup stops background audio',
+  FakeAudio.pauseCalls.length === pauseCountBeforeCleanup + 1
+    && FakeAudio.pauseCalls[FakeAudio.pauseCalls.length - 1] === 'bg-loop.ogg',
+);
