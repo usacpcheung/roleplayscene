@@ -241,11 +241,31 @@ export function renderPlayerUI({
   const lineButtons = new Map();
   let activeLineIndex = null;
 
-  const setLineButtonState = (index, active) => {
-    const button = lineButtons.get(index);
-    if (!button) {
+  const setBubblePlayingState = (bubble, active) => {
+    if (bubble.classList?.toggle) {
+      bubble.classList.toggle('is-playing', active);
       return;
     }
+
+    if (typeof bubble.className === 'string') {
+      const current = bubble.className.split(/\s+/).filter(Boolean);
+      const classes = new Set(current);
+      if (active) {
+        classes.add('is-playing');
+      } else {
+        classes.delete('is-playing');
+      }
+      bubble.className = Array.from(classes).join(' ');
+    }
+  };
+
+  const setLineButtonState = (index, active) => {
+    const entry = lineButtons.get(index);
+    if (!entry) {
+      return;
+    }
+
+    const { button, bubble } = entry;
 
     if (active) {
       if (activeLineIndex !== null && activeLineIndex !== index) {
@@ -254,19 +274,24 @@ export function renderPlayerUI({
       activeLineIndex = index;
       button.textContent = '⏹ Stop line';
       button.setAttribute('aria-pressed', 'true');
+      setBubblePlayingState(bubble, true);
     } else {
       if (activeLineIndex === index) {
         activeLineIndex = null;
       }
       button.textContent = '▶️ Play line';
       button.setAttribute('aria-pressed', 'false');
+      setBubblePlayingState(bubble, false);
     }
   };
 
   const resetAllLines = () => {
-    if (activeLineIndex !== null) {
-      setLineButtonState(activeLineIndex, false);
-    }
+    activeLineIndex = null;
+    lineButtons.forEach(({ button, bubble }) => {
+      button.textContent = '▶️ Play line';
+      button.setAttribute('aria-pressed', 'false');
+      setBubblePlayingState(bubble, false);
+    });
   };
 
   if (!scene) {
@@ -506,7 +531,7 @@ export function renderPlayerUI({
       playButton.textContent = '▶️ Play line';
       playButton.setAttribute('aria-pressed', 'false');
 
-      lineButtons.set(index, playButton);
+      lineButtons.set(index, { button: playButton, bubble });
 
       playButton.addEventListener('click', () => {
         const wasActive = activeLineIndex === index;

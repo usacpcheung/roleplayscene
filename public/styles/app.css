@@ -178,6 +178,17 @@ button:disabled {
   max-width: 100%;
   width: 100%;
 }
+.player-dialogue-bubble::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 2px solid transparent;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
 .player-dialogue-bubble::after {
   content: '';
   position: absolute;
@@ -190,6 +201,22 @@ button:disabled {
   border-right: 1px solid var(--color-border-subtle);
   transform: rotate(45deg);
   box-shadow: 2px 2px 4px rgba(15, 23, 42, 0.06);
+}
+.player-dialogue-bubble.is-playing {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25), var(--shadow-subtle);
+}
+.player-dialogue-bubble.is-playing::after {
+  background: rgba(37, 99, 235, 0.12);
+  border-bottom-color: var(--color-accent);
+  border-right-color: var(--color-accent);
+  box-shadow: 2px 2px 6px rgba(37, 99, 235, 0.2);
+}
+.player-dialogue-bubble.is-playing::before {
+  border-color: rgba(37, 99, 235, 0.35);
+  opacity: 1;
+  transform: scale(1);
 }
 .player-dialogue-bubble p {
   margin: 0;
@@ -208,6 +235,30 @@ button:disabled {
 }
 .dialogue-bubble-play:hover:not(:disabled) {
   background: var(--color-surface-alt);
+}
+.player-dialogue-bubble.is-playing .dialogue-bubble-play {
+  border-color: var(--color-accent);
+}
+
+@keyframes playerDialogueBubblePulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .player-dialogue-bubble.is-playing::before {
+    animation: playerDialogueBubblePulse 2.4s ease-in-out infinite;
+  }
 }
 .player-choices { display: grid; gap: var(--space-xs); }
 .player-choices button {
