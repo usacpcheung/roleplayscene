@@ -1,5 +1,229 @@
 import { SceneType } from '../model.js';
 
+function createDialogueAudioController() {
+  let audio = null;
+  let activeMode = null;
+  let endedHandler = null;
+  let errorHandler = null;
+
+  const ensureAudio = () => {
+    if (!audio) {
+      audio = new Audio();
+    }
+    return audio;
+  };
+
+  const detachListeners = () => {
+    if (!audio) {
+      return;
+    }
+    if (endedHandler) {
+      audio.removeEventListener('ended', endedHandler);
+      endedHandler = null;
+    }
+    if (errorHandler) {
+      audio.removeEventListener('error', errorHandler);
+      errorHandler = null;
+    }
+  };
+
+  const resetElement = () => {
+    if (!audio) {
+      return;
+    }
+    detachListeners();
+    try {
+      audio.pause();
+    } catch (err) {
+      // Ignore pause failures.
+    }
+    try {
+      audio.currentTime = 0;
+    } catch (err) {
+      // Ignore reset failures (e.g., when audio is not seekable yet).
+    }
+    // Clearing the src releases resources without destroying the element.
+    if (audio.src) {
+      if (typeof audio.removeAttribute === 'function') {
+        audio.removeAttribute('src');
+      } else {
+        audio.src = '';
+      }
+      if (typeof audio.load === 'function') {
+        audio.load();
+      }
+    }
+  };
+
+  const stop = ({ reason = 'cancel', error = null } = {}) => {
+    if (!activeMode) {
+      return;
+    }
+
+    const mode = activeMode;
+
+    if (mode.type === 'sequence' && mode.currentEntry) {
+      mode.handlers?.onLineEnd?.(mode.currentEntry, mode.currentIndex);
+      mode.currentEntry = null;
+    }
+
+    activeMode = null;
+    resetElement();
+
+    if (reason === 'complete') {
+      mode.handlers?.onComplete?.();
+    } else if (reason === 'error') {
+      mode.handlers?.onError?.(error);
+    } else {
+      mode.handlers?.onCancel?.();
+    }
+  };
+
+  const playClip = ({ src, onComplete, onCancel, onError }) => {
+    if (!src) {
+      return;
+    }
+
+    stop();
+
+    const handlers = {
+      onComplete,
+      onCancel,
+      onError,
+    };
+
+    const mode = {
+      type: 'clip',
+      handlers,
+    };
+
+    activeMode = mode;
+
+    const element = ensureAudio();
+
+    endedHandler = () => {
+      stop({ reason: 'complete' });
+    };
+
+    errorHandler = (event) => {
+      const err = event?.error ?? event;
+      stop({ reason: 'error', error: err });
+    };
+
+    element.addEventListener('ended', endedHandler);
+    element.addEventListener('error', errorHandler);
+
+    element.src = src;
+
+    try {
+      element.currentTime = 0;
+    } catch (err) {
+      // Ignore reset failures.
+    }
+
+    try {
+      const playAttempt = element.play();
+      if (playAttempt?.catch) {
+        playAttempt.catch(err => {
+          if (activeMode === mode) {
+            stop({ reason: 'error', error: err });
+          }
+        });
+      }
+    } catch (err) {
+      stop({ reason: 'error', error: err });
+    }
+  };
+
+  const playSequence = (entries, handlers = {}) => {
+    stop();
+
+    if (!entries?.length) {
+      handlers.onComplete?.();
+      return;
+    }
+
+    const mode = {
+      type: 'sequence',
+      handlers,
+      currentIndex: 0,
+      currentEntry: null,
+      entries,
+    };
+
+    activeMode = mode;
+
+    const element = ensureAudio();
+
+    const playCurrent = () => {
+      if (activeMode !== mode) {
+        return;
+      }
+
+      if (mode.currentIndex >= mode.entries.length) {
+        stop({ reason: 'complete' });
+        return;
+      }
+
+      const entry = mode.entries[mode.currentIndex];
+      mode.currentEntry = entry;
+      handlers.onLineStart?.(entry, mode.currentIndex);
+
+      detachListeners();
+
+      endedHandler = () => {
+        handlers.onLineEnd?.(entry, mode.currentIndex);
+        mode.currentEntry = null;
+        mode.currentIndex += 1;
+        playCurrent();
+      };
+
+      errorHandler = (event) => {
+        const err = event?.error ?? event;
+        handlers.onLineEnd?.(entry, mode.currentIndex);
+        mode.currentEntry = null;
+        stop({ reason: 'error', error: err });
+      };
+
+      element.addEventListener('ended', endedHandler);
+      element.addEventListener('error', errorHandler);
+
+      element.src = entry.src;
+
+      try {
+        element.currentTime = 0;
+      } catch (err) {
+        // Ignore reset failures.
+      }
+
+      try {
+        const playAttempt = element.play();
+        if (playAttempt?.catch) {
+          playAttempt.catch(err => {
+            if (activeMode === mode) {
+              handlers.onLineEnd?.(entry, mode.currentIndex);
+              mode.currentEntry = null;
+              stop({ reason: 'error', error: err });
+            }
+          });
+        }
+      } catch (err) {
+        handlers.onLineEnd?.(entry, mode.currentIndex);
+        mode.currentEntry = null;
+        stop({ reason: 'error', error: err });
+      }
+    };
+
+    playCurrent();
+  };
+
+  return {
+    playClip,
+    playSequence,
+    stop: () => stop(),
+  };
+}
+
 export function renderPlayerUI({
   stageEl,
   uiEl,
@@ -12,51 +236,44 @@ export function renderPlayerUI({
   stageEl.innerHTML = '';
   uiEl.innerHTML = '';
 
-  const activePlaybackCleanups = new Set();
-  let activeSequence = null;
+  const dialogueAudio = createDialogueAudioController();
 
-  const stopAndResetAudio = (audio) => {
-    if (typeof audio.pause === 'function') {
-      audio.pause();
-    }
-    try {
-      audio.currentTime = 0;
-    } catch (err) {
-      // Ignore reset failures (e.g., when audio is not seekable yet).
-    }
-  };
+  const lineButtons = new Map();
+  let activeLineIndex = null;
 
-  const trackPlayback = (cleanup) => {
-    let active = true;
-    const stop = () => {
-      if (!active) {
-        return;
+  const setLineButtonState = (index, active) => {
+    const button = lineButtons.get(index);
+    if (!button) {
+      return;
+    }
+
+    if (active) {
+      if (activeLineIndex !== null && activeLineIndex !== index) {
+        setLineButtonState(activeLineIndex, false);
       }
-      active = false;
-      cleanup();
-      activePlaybackCleanups.delete(stop);
-    };
-    activePlaybackCleanups.add(stop);
-    return stop;
+      activeLineIndex = index;
+      button.textContent = '⏹ Stop line';
+      button.setAttribute('aria-pressed', 'true');
+    } else {
+      if (activeLineIndex === index) {
+        activeLineIndex = null;
+      }
+      button.textContent = '▶️ Play line';
+      button.setAttribute('aria-pressed', 'false');
+    }
   };
 
-  const stopAllPlayback = () => {
-    if (activeSequence) {
-      const sequence = activeSequence;
-      activeSequence = null;
-      sequence.stop();
+  const resetAllLines = () => {
+    if (activeLineIndex !== null) {
+      setLineButtonState(activeLineIndex, false);
     }
-    const cleanups = Array.from(activePlaybackCleanups);
-    cleanups.forEach(cleanup => {
-      cleanup();
-    });
   };
 
   if (!scene) {
     const placeholder = document.createElement('p');
     placeholder.textContent = 'No scene selected.';
     uiEl.appendChild(placeholder);
-    return stopAllPlayback;
+    return () => dialogueAudio.stop();
   }
 
   if (scene.image?.objectUrl) {
@@ -205,132 +422,66 @@ export function renderPlayerUI({
     .map((line, index) => ({ line, index }))
     .filter(entry => entry.line.audio?.objectUrl);
 
+  let playAllActive = false;
+
+  const setPlayAllState = (active) => {
+    playAllActive = active;
+    if (!playAllButton) {
+      return;
+    }
+    playAllButton.textContent = active ? '⏹ Stop playback' : '▶️ Play all';
+    playAllButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+    playAllButton.disabled = false;
+  };
+
+  let playAllButton = null;
+
   if (audioEntries.length) {
-    const playAllButton = document.createElement('button');
+    playAllButton = document.createElement('button');
     playAllButton.type = 'button';
     playAllButton.className = 'audio-play-all';
     playAllButton.textContent = '▶️ Play all';
     playAllButton.setAttribute('aria-label', 'Play all dialogue audio');
+    playAllButton.setAttribute('aria-pressed', 'false');
 
-    const resetButtonState = () => {
-      playAllButton.textContent = '▶️ Play all';
-      playAllButton.disabled = false;
-    };
-
-    const startSequence = () => {
-      let cancelled = false;
-      let currentIndex = 0;
-      let sequenceActive = true;
-      let activeCleanup = null;
-
-      const handleFailure = err => {
-        console.warn('Audio playback failed', err);
-        finishSequence();
-      };
-
-      const finishSequence = () => {
-        if (activeCleanup) {
-          activeCleanup();
-          activeCleanup = null;
-        }
-        sequenceActive = false;
-        resetButtonState();
-        activeSequence = null;
-      };
-
-      const playNext = () => {
-        if (cancelled) {
-          finishSequence();
-          return;
-        }
-
-        const entry = audioEntries[currentIndex];
-        if (!entry) {
-          finishSequence();
-          return;
-        }
-
-        if (activeCleanup) {
-          activeCleanup();
-          activeCleanup = null;
-        }
-
-        const audio = new Audio(entry.line.audio.objectUrl);
-
-        let stopPlayback = null;
-
-        const finishLine = () => {
-          if (stopPlayback) {
-            stopPlayback();
-            stopPlayback = null;
-          }
-          activeCleanup = null;
-        };
-
-        const onEnded = () => {
-          finishLine();
-          currentIndex += 1;
-          playNext();
-        };
-
-        const onError = event => {
-          const error = event?.error ?? event;
-          finishLine();
-          handleFailure(error);
-        };
-
-        audio.addEventListener('ended', onEnded);
-        audio.addEventListener('error', onError);
-
-        stopPlayback = trackPlayback(() => {
-          audio.removeEventListener('ended', onEnded);
-          audio.removeEventListener('error', onError);
-          stopAndResetAudio(audio);
-        });
-
-        activeCleanup = finishLine;
-
-        try {
-          const playAttempt = audio.play();
-          if (playAttempt?.catch) {
-            playAttempt.catch(err => {
-              const failure = err?.error ?? err;
-              finishLine();
-              handleFailure(failure);
-            });
-          }
-        } catch (err) {
-          const failure = err?.error ?? err;
-          finishLine();
-          handleFailure(failure);
-        }
-      };
-
-      const sequence = {
-        stop() {
-          if (cancelled) {
-            return;
-          }
-          cancelled = true;
-          finishSequence();
-        },
-      };
-
-      playAllButton.textContent = '⏹ Stop playback';
-      playAllButton.disabled = false;
-
-      playNext();
-
-      return sequenceActive ? sequence : null;
+    const revertPlayAll = () => {
+      setPlayAllState(false);
+      resetAllLines();
     };
 
     playAllButton.addEventListener('click', () => {
-      if (activeSequence) {
-        activeSequence.stop();
+      const wasActive = playAllActive;
+      dialogueAudio.stop();
+      if (wasActive) {
         return;
       }
 
-      activeSequence = startSequence();
+      setPlayAllState(true);
+
+      dialogueAudio.playSequence(
+        audioEntries.map(entry => ({
+          src: entry.line.audio.objectUrl,
+          index: entry.index,
+        })),
+        {
+          onLineStart: (entry) => {
+            setLineButtonState(entry.index, true);
+          },
+          onLineEnd: (entry) => {
+            setLineButtonState(entry.index, false);
+          },
+          onComplete: () => {
+            revertPlayAll();
+          },
+          onCancel: () => {
+            revertPlayAll();
+          },
+          onError: (error) => {
+            console.warn('Audio playback failed', error);
+            revertPlayAll();
+          },
+        },
+      );
     });
 
     dialogueBox.appendChild(playAllButton);
@@ -349,50 +500,32 @@ export function renderPlayerUI({
       playButton.type = 'button';
       playButton.className = 'audio-play';
       playButton.textContent = '▶️ Play line';
+      playButton.setAttribute('aria-pressed', 'false');
+
+      lineButtons.set(index, playButton);
+
       playButton.addEventListener('click', () => {
-        const audio = new Audio(line.audio.objectUrl);
-        let stopPlayback = null;
-
-        const finishPlayback = () => {
-          if (stopPlayback) {
-            stopPlayback();
-            stopPlayback = null;
-          }
-        };
-
-        const reportFailure = (error) => {
-          const err = error?.error ?? error;
-          console.warn('Audio playback failed', err);
-          finishPlayback();
-        };
-
-        const onEnded = () => {
-          finishPlayback();
-        };
-
-        const onError = (event) => {
-          reportFailure(event);
-        };
-
-        audio.addEventListener('ended', onEnded);
-        audio.addEventListener('error', onError);
-
-        stopPlayback = trackPlayback(() => {
-          audio.removeEventListener('ended', onEnded);
-          audio.removeEventListener('error', onError);
-          stopAndResetAudio(audio);
-        });
-
-        try {
-          const playAttempt = audio.play();
-          if (playAttempt?.catch) {
-            playAttempt.catch(err => {
-              reportFailure(err);
-            });
-          }
-        } catch (err) {
-          reportFailure(err);
+        const wasActive = activeLineIndex === index;
+        dialogueAudio.stop();
+        if (wasActive) {
+          return;
         }
+
+        setLineButtonState(index, true);
+
+        dialogueAudio.playClip({
+          src: line.audio.objectUrl,
+          onComplete: () => {
+            setLineButtonState(index, false);
+          },
+          onCancel: () => {
+            setLineButtonState(index, false);
+          },
+          onError: (error) => {
+            console.warn('Audio playback failed', error);
+            setLineButtonState(index, false);
+          },
+        });
       });
       lineContainer.appendChild(playButton);
     }
@@ -455,5 +588,7 @@ export function renderPlayerUI({
 
   uiEl.appendChild(choiceBox);
 
-  return stopAllPlayback;
+  return () => {
+    dialogueAudio.stop();
+  };
 }

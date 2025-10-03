@@ -187,7 +187,7 @@ logResult('First clip starts playback', FakeAudio.playCalls[0] === 'audio-1.ogg'
 FakeAudio.instances[0].trigger('ended');
 logResult('Second clip starts after first ends', FakeAudio.playCalls[1] === 'audio-2.ogg');
 
-FakeAudio.instances[1].trigger('ended');
+FakeAudio.instances[0].trigger('ended');
 logResult('Button resets after final clip', playAllButton.textContent === '▶️ Play all');
 
 // Test: repeat click stops and restart works
