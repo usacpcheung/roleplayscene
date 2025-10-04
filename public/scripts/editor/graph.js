@@ -1,3 +1,4 @@
+import { translate } from '../i18n.js';
 import { SceneType } from '../model.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -265,7 +266,9 @@ export function renderGraph(hostEl, project, selectedId, onSelect) {
     type.setAttribute('x', '20');
     type.setAttribute('y', '54');
     type.classList.add('graph-node-subtitle');
-    type.textContent = scene.type;
+    type.textContent = translate(`inspector.sceneTypes.${scene.type}`, {
+      default: scene.type,
+    });
 
     group.appendChild(rect);
     if (scene.image?.objectUrl) {

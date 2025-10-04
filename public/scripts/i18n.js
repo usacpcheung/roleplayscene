@@ -11,6 +11,7 @@ const translations = {
       languageLabel: 'Language',
       localeNames: {
         en: 'English',
+        'zh-TW': '繁體中文',
       },
       dismissMessage: 'Dismiss message',
     },
