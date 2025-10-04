@@ -5,6 +5,7 @@ import { importProject, exportProject, setupPersistence } from './storage.js';
 import { validateProject } from './editor/validators.js';
 import { renderValidation } from './editor/inspector.js';
 import { translate, onLocaleChange, getAvailableLocales } from './i18n.js';
+import './i18n.zh-TW.js';
 
 const appRoot = document.getElementById('app');
 const elLeft = document.getElementById('left-pane');
