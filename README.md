@@ -32,6 +32,13 @@ RolePlayScene is a browser-only builder for compact branching role-play stories.
 - Audio captions through always-present dialogue text.
 - Touch-friendly targets for graph nodes, buttons, and sliders.
 
+### Localisation
+- All UI strings live in [`public/scripts/i18n.js`](public/scripts/i18n.js). The seeded `en` dictionary groups keys by feature (toolbar, inspector, player, persistence, etc.).
+- Use the `translate(id, vars)` helper instead of hard-coded text. For example, `translate('inspector.dialogue.lineLabel', { index: 1 })` renders "Line 1" while preserving fallbacks.
+- When routing user-facing notices through `showMessage`, pass `{ textId: 'messages.importFailed', textArgs }` so locale switches can re-render the current banner without manual plumbing.
+- Add new locale packs by calling `addTranslations(localeCode, entries)` or extending the exported `translations` map before bootstrapping. Unknown locales automatically fall back to English.
+- The global store exposes a `locale` property and `setLocale()` helper; the top-bar selector (`#locale-select`) persists the choice to `localStorage` and re-renders the active mode when changed.
+
 ## Architecture at a glance
 - **Vanilla ES modules** served statically from `/public`; no bundler or build step.
 - **State management** via a simple `Store` (immutable-ish updates + subscriptions) in [`public/scripts/state.js`](public/scripts/state.js).

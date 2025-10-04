@@ -4,6 +4,7 @@ import { renderPlayer } from './player/player.js';
 import { importProject, exportProject, setupPersistence } from './storage.js';
 import { validateProject } from './editor/validators.js';
 import { renderValidation } from './editor/inspector.js';
+import { translate, onLocaleChange, getAvailableLocales } from './i18n.js';
 
 const appRoot = document.getElementById('app');
 const elLeft = document.getElementById('left-pane');
@@ -18,12 +19,80 @@ const btnPlay = document.getElementById('mode-play');
 const btnImport = document.getElementById('import-btn');
 const btnExport = document.getElementById('export-btn');
 const fileInput = document.getElementById('file-input');
+const topbarTitle = document.querySelector('.topbar h1');
+const localeSelect = document.getElementById('locale-select');
+const localeLabel = document.querySelector('.toolbar__locale-label');
 
 const store = new Store();
 
 let mode = 'edit'; // 'edit' | 'play'
 let teardown = null;
 let persistenceCleanup = () => {};
+let lastMessagePayload = null;
+
+const LOCALE_STORAGE_KEY = 'roleplayscene:locale';
+
+function updateToolbarText() {
+  if (topbarTitle) {
+    topbarTitle.textContent = translate('toolbar.appName');
+  }
+  if (btnEdit) {
+    btnEdit.textContent = translate('toolbar.edit');
+  }
+  if (btnPlay) {
+    btnPlay.textContent = translate('toolbar.play');
+  }
+  if (btnImport) {
+    btnImport.textContent = translate('toolbar.import');
+    btnImport.title = translate('toolbar.importTitle');
+  }
+  if (btnExport) {
+    btnExport.textContent = translate('toolbar.export');
+    btnExport.title = translate('toolbar.exportTitle');
+  }
+  if (localeLabel) {
+    localeLabel.textContent = translate('toolbar.languageLabel');
+  }
+  if (localeSelect) {
+    localeSelect.setAttribute('aria-label', translate('toolbar.languageLabel'));
+  }
+  if (dismissButton) {
+    dismissButton.setAttribute('aria-label', translate('toolbar.dismissMessage'));
+  }
+}
+
+function populateLocaleOptions() {
+  if (!localeSelect) return;
+  const locales = getAvailableLocales();
+  const currentValue = store.get().locale;
+  const previousSelection = localeSelect.value;
+  localeSelect.innerHTML = '';
+  locales.forEach(localeCode => {
+    const option = document.createElement('option');
+    option.value = localeCode;
+    option.textContent = translate(`toolbar.localeNames.${localeCode}`, { default: localeCode });
+    if (localeCode === currentValue) {
+      option.selected = true;
+    }
+    localeSelect.appendChild(option);
+  });
+  if (locales.includes(previousSelection) && previousSelection !== currentValue) {
+    localeSelect.value = currentValue;
+  }
+}
+
+function refreshLocaleUI(nextLocale) {
+  document.documentElement?.setAttribute('lang', nextLocale);
+  updateToolbarText();
+  populateLocaleOptions();
+  if (localeSelect) {
+    localeSelect.value = nextLocale;
+  }
+  if (lastMessagePayload) {
+    showMessage(lastMessagePayload);
+  }
+  setMode(mode);
+}
 
 function setMode(next) {
   if (teardown) {
@@ -47,12 +116,23 @@ function setMode(next) {
 function showMessage(msg) {
   if (!messageHost || !messageText || !messageDetails) return;
   if (!msg) {
+    lastMessagePayload = null;
     clearMessage();
     return;
   }
 
   const payload = typeof msg === 'string' ? { text: msg } : msg;
-  const text = payload.text ?? '';
+  const textId = payload.textId ?? null;
+  const textArgs = payload.textArgs ?? {};
+  const resolvedText = textId ? translate(textId, textArgs) : (payload.text ?? '');
+  const preparedPayload = {
+    ...payload,
+    text: resolvedText,
+    textId,
+    textArgs,
+  };
+  lastMessagePayload = preparedPayload;
+  const text = resolvedText;
   const errors = Array.isArray(payload.errors) ? payload.errors : [];
   const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
   const hasErrors = errors.length > 0;
@@ -97,7 +177,7 @@ btnPlay.addEventListener('click', () => {
   const result = validateProject(store.get().project);
   if (result.errors.length) {
     showMessage({
-      text: 'Resolve validation errors before entering Play mode.',
+      textId: 'messages.validationBeforePlay',
       errors: result.errors,
       warnings: result.warnings,
     });
@@ -127,13 +207,13 @@ fileInput.addEventListener('change', async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    showMessage('Importing project…');
+    showMessage({ textId: 'messages.importingProject' });
     await importProject(store, file);
-    showMessage('Imported project.');
+    showMessage({ textId: 'messages.importedProject' });
     setMode('edit');
   } catch (err) {
     console.error(err);
-    showMessage('Import failed.');
+    showMessage({ textId: 'messages.importFailed' });
   } finally {
     fileInput.value = '';
   }
@@ -141,16 +221,27 @@ fileInput.addEventListener('change', async (e) => {
 
 btnExport.addEventListener('click', async () => {
   try {
-    showMessage('Preparing export…');
+    showMessage({ textId: 'messages.preparingExport' });
     await exportProject(store);
-    showMessage('Exported project archive.');
+    showMessage({ textId: 'messages.exportedProject' });
   } catch (err) {
     console.error(err);
-    showMessage('Export failed.');
+    showMessage({ textId: 'messages.exportFailed' });
   }
 });
 
 async function bootstrap() {
+  const storedLocale = (() => {
+    try {
+      return globalThis.localStorage?.getItem(LOCALE_STORAGE_KEY) ?? null;
+    } catch (err) {
+      return null;
+    }
+  })();
+  if (storedLocale) {
+    store.setLocale(storedLocale);
+  }
+  refreshLocaleUI(store.get().locale);
   try {
     persistenceCleanup = await setupPersistence(store, { showMessage });
   } catch (err) {
@@ -161,6 +252,27 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+if (localeSelect) {
+  localeSelect.addEventListener('change', (event) => {
+    const selected = event.target.value;
+    store.setLocale(selected);
+    try {
+      globalThis.localStorage?.setItem(LOCALE_STORAGE_KEY, store.get().locale);
+    } catch (err) {
+      // Ignore storage failures for locale preference.
+    }
+  });
+}
+
+onLocaleChange((nextLocale) => {
+  try {
+    globalThis.localStorage?.setItem(LOCALE_STORAGE_KEY, nextLocale);
+  } catch (err) {
+    // Ignore storage failures.
+  }
+  refreshLocaleUI(nextLocale);
+});
 
 window.addEventListener('beforeunload', () => {
   if (typeof teardown === 'function') {

@@ -410,7 +410,7 @@ async function reseedPersistence(project) {
 export async function setupPersistence(store, { showMessage = noop } = {}) {
   if (!isIndexedDBAvailable()) {
     if (typeof showMessage === 'function') {
-      showMessage('Autosave disabled: IndexedDB not supported.');
+      showMessage({ textId: 'persistence.autosaveUnavailable' });
     }
     return noop;
   }
@@ -421,7 +421,7 @@ export async function setupPersistence(store, { showMessage = noop } = {}) {
   } catch (err) {
     console.error('Failed to open IndexedDB', err);
     if (typeof showMessage === 'function') {
-      showMessage('Autosave disabled: unable to open browser storage.');
+      showMessage({ textId: 'persistence.autosaveOpenFailed' });
     }
     return noop;
   }
@@ -446,7 +446,7 @@ export async function setupPersistence(store, { showMessage = noop } = {}) {
       }
     } catch (err) {
       console.error('Failed to read persisted project', err);
-      notify('Autosave disabled: unable to read saved project.');
+      notify({ textId: 'persistence.autosaveReadFailed' });
       disabled = true;
     }
   }
@@ -461,7 +461,7 @@ export async function setupPersistence(store, { showMessage = noop } = {}) {
     } catch (err) {
       console.error('Failed to persist project', err);
       if (!disabled) {
-        notify('Autosave disabled: storage error.');
+        notify({ textId: 'persistence.autosaveWriteFailed' });
       }
       disabled = true;
     }

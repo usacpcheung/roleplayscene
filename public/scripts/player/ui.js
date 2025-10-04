@@ -1,4 +1,5 @@
 import { SceneType } from '../model.js';
+import { translate } from '../i18n.js';
 
 function createDialogueAudioController() {
   let audio = null;
@@ -272,14 +273,14 @@ export function renderPlayerUI({
         setLineButtonState(activeLineIndex, false);
       }
       activeLineIndex = index;
-      button.textContent = '⏹ Stop line';
+      button.textContent = translate('player.dialogue.stopLine');
       button.setAttribute('aria-pressed', 'true');
       setBubblePlayingState(bubble, true);
     } else {
       if (activeLineIndex === index) {
         activeLineIndex = null;
       }
-      button.textContent = '▶️ Play line';
+      button.textContent = translate('player.dialogue.playLine');
       button.setAttribute('aria-pressed', 'false');
       setBubblePlayingState(bubble, false);
     }
@@ -288,7 +289,7 @@ export function renderPlayerUI({
   const resetAllLines = () => {
     activeLineIndex = null;
     lineButtons.forEach(({ button, bubble }) => {
-      button.textContent = '▶️ Play line';
+      button.textContent = translate('player.dialogue.playLine');
       button.setAttribute('aria-pressed', 'false');
       setBubblePlayingState(bubble, false);
     });
@@ -296,7 +297,7 @@ export function renderPlayerUI({
 
   if (!scene) {
     const placeholder = document.createElement('p');
-    placeholder.textContent = 'No scene selected.';
+    placeholder.textContent = translate('player.noSceneSelected');
     uiEl.appendChild(placeholder);
     return () => dialogueAudio.stop();
   }
@@ -304,12 +305,12 @@ export function renderPlayerUI({
   if (scene.image?.objectUrl) {
     const img = document.createElement('img');
     img.src = scene.image.objectUrl;
-    img.alt = `${scene.id} artwork`;
+    img.alt = translate('player.stageImageAlt', { sceneId: scene.id });
     stageEl.appendChild(img);
   } else {
     const emptyStage = document.createElement('div');
     emptyStage.className = 'stage-empty';
-    emptyStage.textContent = 'No stage image';
+    emptyStage.textContent = translate('player.stageImageEmpty');
     stageEl.appendChild(emptyStage);
   }
 
@@ -318,14 +319,14 @@ export function renderPlayerUI({
     bgControls.className = 'background-audio-controls';
 
     const heading = document.createElement('h4');
-    heading.textContent = 'Background music';
+    heading.textContent = translate('player.background.title');
     bgControls.appendChild(heading);
 
     const volumeWrapper = document.createElement('div');
     volumeWrapper.className = 'background-volume';
 
     const volumeLabel = document.createElement('label');
-    volumeLabel.textContent = 'Background music volume';
+    volumeLabel.textContent = translate('player.background.volumeLabel');
 
     const volumeSlider = document.createElement('input');
     volumeSlider.type = 'range';
@@ -333,7 +334,7 @@ export function renderPlayerUI({
     volumeSlider.max = '1';
     volumeSlider.step = '0.05';
     volumeSlider.value = String(backgroundAudioControls.volume ?? 0);
-    volumeSlider.setAttribute('aria-label', 'Background music volume');
+    volumeSlider.setAttribute('aria-label', translate('player.background.volumeLabel'));
     volumeSlider.disabled = Boolean(backgroundAudioControls.muted);
 
     const volumeValue = document.createElement('span');
@@ -356,9 +357,13 @@ export function renderPlayerUI({
     muteButton.type = 'button';
 
     const updateMuteLabel = (muted) => {
-      muteButton.textContent = muted ? 'Unmute background music' : 'Mute background music';
+      muteButton.textContent = muted
+        ? translate('player.background.unmute')
+        : translate('player.background.mute');
       muteButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
-      muteButton.setAttribute('aria-label', muted ? 'Unmute background music' : 'Mute background music');
+      muteButton.setAttribute('aria-label', muted
+        ? translate('player.background.unmute')
+        : translate('player.background.mute'));
       volumeSlider.disabled = muted;
     };
 
@@ -381,7 +386,7 @@ export function renderPlayerUI({
 
     const historyTitle = document.createElement('h4');
     historyTitle.className = 'player-history-title';
-    historyTitle.textContent = 'Story history';
+    historyTitle.textContent = translate('player.history.title');
     historyWrapper.appendChild(historyTitle);
 
     const navControls = document.createElement('div');
@@ -390,9 +395,9 @@ export function renderPlayerUI({
     const backButton = document.createElement('button');
     backButton.type = 'button';
     backButton.className = 'player-history-back';
-    backButton.textContent = '← Back';
+    backButton.textContent = translate('player.history.back');
     backButton.disabled = !historyControls.canGoBack;
-    backButton.setAttribute('aria-label', 'Go to previous scene');
+    backButton.setAttribute('aria-label', translate('player.history.backLabel'));
     if (historyControls.onBack) {
       backButton.addEventListener('click', () => historyControls.onBack());
     }
@@ -400,9 +405,9 @@ export function renderPlayerUI({
     const forwardButton = document.createElement('button');
     forwardButton.type = 'button';
     forwardButton.className = 'player-history-forward';
-    forwardButton.textContent = 'Forward →';
+    forwardButton.textContent = translate('player.history.forward');
     forwardButton.disabled = !historyControls.canGoForward;
-    forwardButton.setAttribute('aria-label', 'Go to next scene');
+    forwardButton.setAttribute('aria-label', translate('player.history.forwardLabel'));
     if (historyControls.onForward) {
       forwardButton.addEventListener('click', () => historyControls.onForward());
     }
@@ -413,7 +418,7 @@ export function renderPlayerUI({
 
     const historyList = document.createElement('ol');
     historyList.className = 'player-history-list';
-    historyList.setAttribute('aria-label', 'Visited scenes');
+    historyList.setAttribute('aria-label', translate('player.history.listLabel'));
 
     historyControls.entries.forEach((entry, index) => {
       const item = document.createElement('li');
@@ -460,7 +465,9 @@ export function renderPlayerUI({
     if (!playAllButton) {
       return;
     }
-    playAllButton.textContent = active ? '⏹ Stop playback' : '▶️ Play all';
+    playAllButton.textContent = active
+      ? translate('player.dialogue.stopAll')
+      : translate('player.dialogue.playAll');
     playAllButton.setAttribute('aria-pressed', active ? 'true' : 'false');
     playAllButton.disabled = false;
   };
@@ -471,8 +478,8 @@ export function renderPlayerUI({
     playAllButton = document.createElement('button');
     playAllButton.type = 'button';
     playAllButton.className = 'audio-play-all';
-    playAllButton.textContent = '▶️ Play all';
-    playAllButton.setAttribute('aria-label', 'Play all dialogue audio');
+    playAllButton.textContent = translate('player.dialogue.playAll');
+    playAllButton.setAttribute('aria-label', translate('player.dialogue.playAllAria'));
     playAllButton.setAttribute('aria-pressed', 'false');
 
     const revertPlayAll = () => {
@@ -508,7 +515,7 @@ export function renderPlayerUI({
             revertPlayAll();
           },
           onError: (error) => {
-            console.warn('Audio playback failed', error);
+            console.warn(translate('player.dialogue.playbackError'), error);
             revertPlayAll();
           },
         },
@@ -527,14 +534,14 @@ export function renderPlayerUI({
     lineContainer.appendChild(bubble);
 
     const text = document.createElement('p');
-    text.textContent = line.text || `(Line ${index + 1})`;
+    text.textContent = line.text || translate('player.dialogue.lineFallback', { index: index + 1 });
     bubble.appendChild(text);
 
     if (line.audio?.objectUrl) {
       const playButton = document.createElement('button');
       playButton.type = 'button';
       playButton.className = 'dialogue-bubble-play';
-      playButton.textContent = '▶️ Play line';
+      playButton.textContent = translate('player.dialogue.playLine');
       playButton.setAttribute('aria-pressed', 'false');
 
       lineButtons.set(index, { button: playButton, bubble });
@@ -557,7 +564,7 @@ export function renderPlayerUI({
             setLineButtonState(index, false);
           },
           onError: (error) => {
-            console.warn('Audio playback failed', error);
+            console.warn(translate('player.dialogue.playbackError'), error);
             setLineButtonState(index, false);
           },
         });
@@ -576,7 +583,7 @@ export function renderPlayerUI({
   if (scene.type === SceneType.END) {
     const endMessage = document.createElement('p');
     endMessage.className = 'the-end';
-    endMessage.textContent = 'The End';
+    endMessage.textContent = translate('player.choices.endMessage');
     choiceBox.appendChild(endMessage);
   } else {
     const sceneChoices = scene.choices || [];
@@ -588,10 +595,10 @@ export function renderPlayerUI({
       if (autoNextId) {
         const continueButton = document.createElement('button');
         continueButton.type = 'button';
-        continueButton.textContent = 'Continue';
+        continueButton.textContent = translate('player.choices.continue');
         continueButton.disabled = !autoNextValid;
         if (!autoNextValid) {
-          continueButton.title = 'Destination scene is missing.';
+          continueButton.title = translate('player.choices.autoNextMissing');
         }
         continueButton.addEventListener('click', () => {
           if (autoNextValid && autoNextId) {
@@ -602,7 +609,7 @@ export function renderPlayerUI({
       } else {
         const noChoices = document.createElement('p');
         noChoices.className = 'empty';
-        noChoices.textContent = 'No choices available.';
+        noChoices.textContent = translate('player.choices.noneAvailable');
         choiceBox.appendChild(noChoices);
       }
     }
@@ -610,7 +617,7 @@ export function renderPlayerUI({
     sceneChoices.forEach(choice => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = choice.label || 'Continue';
+      button.textContent = choice.label || translate('player.choices.continue');
       button.disabled = !choice.nextSceneId || !project.scenes.some(s => s.id === choice.nextSceneId);
       button.addEventListener('click', () => {
         if (choice.nextSceneId) {
