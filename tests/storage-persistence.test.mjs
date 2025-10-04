@@ -10,6 +10,7 @@ import {
   importProject,
 } from '../public/scripts/storage.js';
 import { unzip } from '../public/scripts/utils/zip.js';
+import { translate, setActiveLocale } from '../public/scripts/i18n.js';
 
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -70,7 +71,15 @@ let persistenceMessage = '';
 const cleanup = await setupPersistence(store, { showMessage: (msg) => { persistenceMessage = msg; } });
 assert.strictEqual(typeof cleanup, 'function', 'setupPersistence should return a cleanup function');
 cleanup();
-assert.ok(persistenceMessage.includes('Autosave disabled'), 'fallback message should mention autosave being disabled');
+setActiveLocale('en');
+const resolvedPersistenceMessage = typeof persistenceMessage === 'string'
+  ? persistenceMessage
+  : translate(persistenceMessage?.textId, persistenceMessage?.textArgs);
+assert.ok(
+  typeof resolvedPersistenceMessage === 'string'
+  && resolvedPersistenceMessage.includes('Autosave disabled'),
+  'fallback message should mention autosave being disabled',
+);
 
 const exportStore = new Store();
 exportStore.set({ project: hydrated });

@@ -2,6 +2,7 @@ import { renderGraph } from './graph.js';
 import { renderInspector } from './inspector.js';
 import { validateProject } from './validators.js';
 import { createScene, SceneType } from '../model.js';
+import { translate } from '../i18n.js';
 
 export function renderEditor(store, leftEl, rightEl, showMessage) {
   leftEl.innerHTML = '';
@@ -132,7 +133,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
   function addScene() {
     const { project } = store.get();
     if (project.scenes.length >= 20) {
-      showMessage('Scene limit reached (20).');
+      showMessage({ textId: 'inspector.notifications.sceneLimit' });
       return;
     }
     const newScene = createScene();
@@ -141,7 +142,10 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       scenes: [...prev.scenes, newScene],
     }));
     selectedId = newScene.id;
-    showMessage(`Added scene ${newScene.id}.`);
+    showMessage({
+      textId: 'inspector.notifications.sceneAdded',
+      textArgs: { id: newScene.id },
+    });
   }
 
   function deleteScene(sceneId) {
@@ -150,7 +154,7 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     if (!scene) return;
     const startScenes = project.scenes.filter(s => s.type === SceneType.START);
     if (scene.type === SceneType.START && startScenes.length <= 1) {
-      showMessage('Cannot delete the only Start scene.');
+      showMessage({ textId: 'inspector.notifications.cannotDeleteStart' });
       return;
     }
     if (scene.image?.objectUrl) {
@@ -180,7 +184,10 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
     });
     const nextProject = store.get().project;
     selectedId = nextProject.scenes[0]?.id ?? null;
-    showMessage(`Deleted scene ${sceneId}.`);
+    showMessage({
+      textId: 'inspector.notifications.sceneDeleted',
+      textArgs: { id: sceneId },
+    });
   }
 
   function setSceneType(sceneId, type) {
@@ -202,7 +209,11 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       });
       return { ...prev, scenes };
     });
-    showMessage(`Scene ${sceneId} set to ${type}.`);
+    const typeLabel = translate(`inspector.sceneTypes.${type}`, { default: type });
+    showMessage({
+      textId: 'inspector.notifications.sceneTypeUpdated',
+      textArgs: { id: sceneId, type: typeLabel },
+    });
   }
 
   function setSceneImage(sceneId, file) {
@@ -226,7 +237,17 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       });
       return { ...prev, scenes };
     });
-    showMessage(file ? `Updated image for ${sceneId}.` : `Removed image for ${sceneId}.`);
+    if (file) {
+      showMessage({
+        textId: 'inspector.notifications.imageUpdated',
+        textArgs: { id: sceneId },
+      });
+    } else {
+      showMessage({
+        textId: 'inspector.notifications.imageRemoved',
+        textArgs: { id: sceneId },
+      });
+    }
   }
 
   function setSceneBackgroundAudio(sceneId, file) {
@@ -250,9 +271,17 @@ export function renderEditor(store, leftEl, rightEl, showMessage) {
       });
       return { ...prev, scenes };
     });
-    showMessage(file
-      ? `Updated background audio for ${sceneId}.`
-      : `Removed background audio for ${sceneId}.`);
+    if (file) {
+      showMessage({
+        textId: 'inspector.notifications.backgroundUpdated',
+        textArgs: { id: sceneId },
+      });
+    } else {
+      showMessage({
+        textId: 'inspector.notifications.backgroundRemoved',
+        textArgs: { id: sceneId },
+      });
+    }
   }
 
   function addDialogue(sceneId) {

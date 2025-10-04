@@ -116,6 +116,9 @@ globalThis.Audio = FakeAudio;
 
 const { renderPlayerUI } = await import('../public/scripts/player/ui.js');
 const { SceneType } = await import('../public/scripts/model.js');
+const { translate, setActiveLocale } = await import('../public/scripts/i18n.js');
+
+setActiveLocale('en');
 
 function createStage() {
   return new StubElement('div');
@@ -188,7 +191,7 @@ FakeAudio.instances[0].trigger('ended');
 logResult('Second clip starts after first ends', FakeAudio.playCalls[1] === 'audio-2.ogg');
 
 FakeAudio.instances[0].trigger('ended');
-logResult('Button resets after final clip', playAllButton.textContent === '▶️ Play all');
+logResult('Button resets after final clip', playAllButton.textContent === translate('player.dialogue.playAll'));
 
 // Test: repeat click stops and restart works
 resetAudioSpies();
@@ -199,7 +202,7 @@ playAllButton.dispatchEvent('click');
 logResult('Playback starts on demand', FakeAudio.playCalls[0] === 'audio-1.ogg');
 
 playAllButton.dispatchEvent('click');
-logResult('Playback stops on second click', playAllButton.textContent === '▶️ Play all');
+logResult('Playback stops on second click', playAllButton.textContent === translate('player.dialogue.playAll'));
 
 playAllButton.dispatchEvent('click');
 logResult('Playback restarts after stop', FakeAudio.playCalls[1] === 'audio-1.ogg');

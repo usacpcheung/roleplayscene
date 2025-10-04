@@ -1,6 +1,7 @@
 import { ensureAudioGate, createBackgroundAudioController } from './audio.js';
 import { renderPlayerUI } from './ui.js';
 import { SceneType } from '../model.js';
+import { translate } from '../i18n.js';
 
 export function renderPlayer(store, leftEl, rightEl, showMessage) {
   leftEl.innerHTML = '';
@@ -95,19 +96,19 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     stage.innerHTML = '';
     const introStage = document.createElement('div');
     introStage.className = 'stage-empty';
-    introStage.textContent = 'Ready to play';
+    introStage.textContent = translate('player.ready');
     stage.appendChild(introStage);
 
     uiPanel.innerHTML = '';
     const title = document.createElement('h3');
-    title.textContent = project.meta?.title || 'Role Play';
+    title.textContent = project.meta?.title || translate('player.untitled');
     const startBtn = document.createElement('button');
-    startBtn.textContent = 'Begin Story';
+    startBtn.textContent = translate('player.begin');
     startBtn.addEventListener('click', () => {
       ensureAudioGate(store);
       const startScene = findStartScene(store.get().project);
       if (!startScene) {
-        showMessage('No Start scene found.');
+        showMessage({ textId: 'player.noStartScene' });
         return;
       }
       beginRunAt(startScene.id);
@@ -128,7 +129,7 @@ export function renderPlayer(store, leftEl, rightEl, showMessage) {
     const scene = findSceneById(project, currentSceneId);
     if (!scene) {
       maybeStopBeforeScene(null);
-      showMessage('Scene missing.');
+      showMessage({ textId: 'player.sceneMissing' });
       renderIntro();
       return;
     }
